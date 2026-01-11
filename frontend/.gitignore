@@ -1,0 +1,22 @@
+# Local files
+.env.local
+.env.*.local
+
+# Expo
+.expo/
+dist/
+web-build/
+
+# Dependencies
+node_modules/
+
+# Misc
+.DS_Store
+
+# Debug
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# Metro
+.metro-health-check*

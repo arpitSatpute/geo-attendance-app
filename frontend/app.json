@@ -1,0 +1,51 @@
+{
+  "expo": {
+    "name": "GeoAttendance Pro",
+    "slug": "geo-attendance-app",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "scheme": "geoattendance",
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#f5f5f5"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.geoattendance.app",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "This app needs access to your location for attendance tracking",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "This app needs access to your location for attendance tracking",
+        "NSLocationAlwaysUsageDescription": "This app needs access to your location for attendance tracking",
+        "UIBackgroundModes": [
+          "location"
+        ]
+      }
+    },
+    "android": {
+      "package": "com.geoattendance.app",
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_BACKGROUND_LOCATION",
+        "INTERNET"
+      ]
+    },
+    "plugins": [
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Allow GeoAttendance to access your location for attendance tracking."
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "your-project-id"
+      }
+    }
+  }
+}

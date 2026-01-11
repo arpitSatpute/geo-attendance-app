@@ -1,0 +1,98 @@
+spring:
+  application:
+    name: geo-attendance-backend
+
+  # MongoDB configuration
+  data:
+    mongodb:
+      uri: mongodb://localhost:27017/geo_attendance
+      # For MongoDB with authentication, use:
+      # uri: mongodb://username:password@localhost:27017/geo_attendance
+
+  # Temporarily disable Redis and Mail auto-configuration
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.redis.RedisRepositoriesAutoConfiguration
+      - org.springframework.boot.autoconfigure.mail.MailSenderAutoConfiguration
+
+  # Redis settings (kept for reference)
+  redis:
+    host: localhost
+    port: 6379
+    timeout: 60000ms
+    jedis:
+      pool:
+        max-active: 20
+        max-idle: 10
+        min-idle: 5
+
+  # Mail settings (kept for reference) - Mail auto-config is excluded above
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: your-email@gmail.com
+    password: your-app-password
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
+  
+app:
+  # Application-level flags to indicate these services are intentionally disabled.
+  disable-redis: true
+  disable-mail: true
+
+  jwt:
+    secret: your-super-secret-jwt-key-change-this-in-production
+    expiration: 86400000
+    refresh-expiration: 604800000
+
+  google-maps:
+    api-key: your-google-maps-api-key
+
+  cors:
+    allowed-origins: http://localhost:3000,http://localhost:8081,https://yourdomain.com
+    allowed-methods: GET,POST,PUT,DELETE,OPTIONS
+    allowed-headers: "*"
+    allow-credentials: true
+
+server:
+  port: 8080
+  servlet:
+    context-path: /api
+  compression:
+    enabled: true
+    mime-types: application/json,application/xml,text/html,text/xml,text/plain
+
+logging:
+  level:
+    root: INFO
+    com.geoattendance: DEBUG
+    org.springframework.web: INFO
+    org.springframework.security: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+  file:
+    name: logs/geo-attendance.log
+
+geofencing:
+  check-interval: 10000
+  notification-enabled: true
+  accuracy-threshold: 100
+
+attendance:
+  auto-checkout-time: "18:00"
+  auto-checkout-enabled: true
+  late-arrival-threshold: 600000
+
+email:
+  from: noreply@geoattendance.com
+  support: support@geoattendance.com

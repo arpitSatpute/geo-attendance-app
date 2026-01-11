@@ -1,0 +1,942 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GeoAttendance Pro - Real-Time GPS Attendance Tracking</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary-bg: #f5f5f5;
+            --text-dark: #000000;
+            --text-light: #666666;
+            --accent-blue: #d4e8f0;
+            --accent-pink: #f0d4e8;
+            --border-color: #e0e0e0;
+            --white: #ffffff;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', sans-serif;
+            background-color: var(--primary-bg);
+            color: var(--text-dark);
+            line-height: 1.6;
+        }
+
+        /* Navigation */
+        nav {
+            background: var(--white);
+            padding: 1.5rem 2rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        nav .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 700;
+            letter-spacing: -1px;
+        }
+
+        nav ul {
+            list-style: none;
+            display: flex;
+            gap: 2rem;
+        }
+
+        nav a {
+            text-decoration: none;
+            color: var(--text-dark);
+            font-weight: 500;
+            transition: color 0.3s;
+        }
+
+        nav a:hover {
+            color: var(--text-light);
+        }
+
+        /* Container */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem;
+        }
+
+        /* Hero Section */
+        .hero {
+            padding: 6rem 2rem;
+            background: linear-gradient(135deg, var(--primary-bg) 0%, var(--accent-blue) 50%, var(--accent-pink) 100%);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -10%;
+            width: 500px;
+            height: 500px;
+            background: radial-gradient(circle, var(--accent-pink) 0%, transparent 70%);
+            border-radius: 50%;
+            opacity: 0.3;
+        }
+
+        .hero::after {
+            content: '';
+            position: absolute;
+            bottom: -30%;
+            left: -5%;
+            width: 400px;
+            height: 400px;
+            background: radial-gradient(circle, var(--accent-blue) 0%, transparent 70%);
+            border-radius: 50%;
+            opacity: 0.3;
+        }
+
+        .hero-content {
+            position: relative;
+            z-index: 1;
+            max-width: 600px;
+        }
+
+        .hero h1 {
+            font-size: 3.5rem;
+            font-weight: 700;
+            line-height: 1.1;
+            margin-bottom: 1rem;
+            letter-spacing: -2px;
+        }
+
+        .hero p {
+            font-size: 1.1rem;
+            color: var(--text-light);
+            margin-bottom: 2rem;
+            font-weight: 300;
+        }
+
+        .cta-button {
+            display: inline-block;
+            padding: 1rem 2rem;
+            background: var(--text-dark);
+            color: var(--white);
+            text-decoration: none;
+            border-radius: 4px;
+            font-weight: 600;
+            transition: background 0.3s;
+        }
+
+        .cta-button:hover {
+            background: var(--text-light);
+        }
+
+        /* Features Section */
+        .features {
+            padding: 6rem 2rem;
+            background: var(--white);
+        }
+
+        .section-title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            text-align: center;
+        }
+
+        .section-subtitle {
+            font-size: 1rem;
+            color: var(--text-light);
+            text-align: center;
+            margin-bottom: 4rem;
+            font-weight: 300;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 2rem;
+        }
+
+        .feature-card {
+            padding: 2rem;
+            background: var(--primary-bg);
+            border-radius: 8px;
+            border-left: 4px solid var(--text-dark);
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+        }
+
+        .feature-card h3 {
+            font-size: 1.3rem;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+        }
+
+        .feature-card p {
+            color: var(--text-light);
+            font-size: 0.95rem;
+            font-weight: 300;
+        }
+
+        /* Architecture Section */
+        .architecture {
+            padding: 6rem 2rem;
+            background: var(--accent-blue);
+        }
+
+        .architecture-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 3rem;
+            align-items: center;
+        }
+
+        .architecture-text h2 {
+            font-size: 2rem;
+            margin-bottom: 1rem;
+            font-weight: 700;
+        }
+
+        .architecture-text p {
+            color: var(--text-light);
+            margin-bottom: 1rem;
+            font-weight: 300;
+        }
+
+        .tech-stack {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-top: 2rem;
+        }
+
+        .tech-item {
+            background: var(--white);
+            padding: 1rem;
+            border-radius: 4px;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        /* Dashboard Preview */
+        .dashboard-preview {
+            padding: 6rem 2rem;
+            background: var(--white);
+        }
+
+        .preview-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 2rem;
+            margin-top: 3rem;
+        }
+
+        .preview-card {
+            background: var(--primary-bg);
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }
+
+        .preview-header {
+            background: var(--text-dark);
+            color: var(--white);
+            padding: 1rem;
+            font-weight: 600;
+            font-size: 0.95rem;
+        }
+
+        .preview-content {
+            padding: 1.5rem;
+        }
+
+        .preview-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem 0;
+            border-bottom: 1px solid var(--border-color);
+            font-size: 0.9rem;
+        }
+
+        .preview-item:last-child {
+            border-bottom: none;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .status-active {
+            background: var(--accent-blue);
+            color: var(--text-dark);
+        }
+
+        .status-pending {
+            background: var(--accent-pink);
+            color: var(--text-dark);
+        }
+
+        /* Analytics Section */
+        .analytics {
+            padding: 6rem 2rem;
+            background: var(--accent-pink);
+        }
+
+        .analytics-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 3rem;
+            align-items: center;
+            margin-top: 3rem;
+        }
+
+        .chart-container {
+            background: var(--white);
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+        }
+
+        .stat-card {
+            background: var(--white);
+            padding: 1.5rem;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--text-dark);
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-label {
+            color: var(--text-light);
+            font-size: 0.9rem;
+            font-weight: 300;
+        }
+
+        /* Roles Section */
+        .roles {
+            padding: 6rem 2rem;
+            background: var(--white);
+        }
+
+        .roles-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 2rem;
+            margin-top: 3rem;
+        }
+
+        .role-card {
+            background: var(--primary-bg);
+            padding: 2rem;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .role-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+        }
+
+        .role-features {
+            text-align: left;
+            margin-top: 1.5rem;
+        }
+
+        .role-features li {
+            list-style: none;
+            padding: 0.5rem 0;
+            color: var(--text-light);
+            font-size: 0.9rem;
+            font-weight: 300;
+            position: relative;
+            padding-left: 1.5rem;
+        }
+
+        .role-features li::before {
+            content: '✓';
+            position: absolute;
+            left: 0;
+            font-weight: 700;
+        }
+
+        /* Technology Stack */
+        .tech-section {
+            padding: 6rem 2rem;
+            background: var(--accent-blue);
+        }
+
+        .tech-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 2rem;
+            margin-top: 3rem;
+        }
+
+        .tech-card {
+            background: var(--white);
+            padding: 1.5rem;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .tech-name {
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .tech-desc {
+            font-size: 0.85rem;
+            color: var(--text-light);
+            font-weight: 300;
+        }
+
+        /* Benefits Section */
+        .benefits {
+            padding: 6rem 2rem;
+            background: var(--white);
+        }
+
+        .benefits-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 2rem;
+            margin-top: 3rem;
+        }
+
+        .benefit-item {
+            text-align: center;
+        }
+
+        .benefit-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+
+        .benefit-title {
+            font-size: 1.2rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .benefit-desc {
+            color: var(--text-light);
+            font-size: 0.95rem;
+            font-weight: 300;
+        }
+
+        /* Footer */
+        footer {
+            background: var(--text-dark);
+            color: var(--white);
+            padding: 3rem 2rem;
+            text-align: center;
+        }
+
+        footer p {
+            font-weight: 300;
+            margin-bottom: 1rem;
+        }
+
+        footer a {
+            color: var(--white);
+            text-decoration: none;
+            margin: 0 1rem;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .hero h1 {
+                font-size: 2.5rem;
+            }
+
+            .section-title {
+                font-size: 2rem;
+            }
+
+            .preview-grid,
+            .roles-grid,
+            .benefits-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .architecture-content,
+            .analytics-grid {
+                grid-template-columns: 1fr;
+            }
+
+            nav ul {
+                gap: 1rem;
+                font-size: 0.9rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav>
+        <div class="container">
+            <div class="logo">GeoAttendance Pro</div>
+            <ul>
+                <li><a href="#features">Features</a></li>
+                <li><a href="#architecture">Architecture</a></li>
+                <li><a href="#roles">Roles</a></li>
+                <li><a href="#technology">Technology</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="container">
+            <div class="hero-content">
+                <h1>Real-Time GPS Attendance Tracking</h1>
+                <p>Automate employee attendance with geofencing technology. Track locations in real-time, detect check-ins/check-outs automatically, and generate comprehensive analytics.</p>
+                <a href="#features" class="cta-button">Explore Features</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="features" id="features">
+        <div class="container">
+            <h2 class="section-title">Core Features</h2>
+            <p class="section-subtitle">Comprehensive attendance tracking with advanced geolocation technology</p>
+            
+            <div class="features-grid">
+                <div class="feature-card">
+                    <h3>Real-Time Location Tracking</h3>
+                    <p>Continuous GPS monitoring with background location services. Integrates GPS and WiFi signals for improved accuracy in both outdoor and indoor environments.</p>
+                </div>
+                <div class="feature-card">
+                    <h3>Geofencing System</h3>
+                    <p>Define virtual boundaries using polygon or circular geofences. Automatic check-in when entering and check-out when exiting designated areas.</p>
+                </div>
+                <div class="feature-card">
+                    <h3>Automatic Attendance Marking</h3>
+                    <p>Seamless check-in/check-out without manual intervention. Location accuracy verification prevents proxy attendance.</p>
+                </div>
+                <div class="feature-card">
+                    <h3>Face Recognition Integration</h3>
+                    <p>AI-powered facial recognition using TensorFlow and OpenCV. Additional verification layer for secure attendance tracking.</p>
+                </div>
+                <div class="feature-card">
+                    <h3>Real-Time Notifications</h3>
+                    <p>WebSocket-based push notifications for check-in/check-out events. Email alerts for critical events and geofence violations.</p>
+                </div>
+                <div class="feature-card">
+                    <h3>Offline Synchronization</h3>
+                    <p>Local data caching with automatic sync when connection restored. Conflict resolution for offline changes.</p>
+                </div>
+                <div class="feature-card">
+                    <h3>Role-Based Dashboards</h3>
+                    <p>Customized interfaces for Employee, Manager, and Admin roles. Each role has specific features and permissions.</p>
+                </div>
+                <div class="feature-card">
+                    <h3>Analytics & Reporting</h3>
+                    <p>Comprehensive attendance reports with date range filtering. Export to CSV and PDF formats for easy sharing.</p>
+                </div>
+                <div class="feature-card">
+                    <h3>Leave Management</h3>
+                    <p>Apply for leaves with manager approval workflow. Integration with attendance tracking for accurate records.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Architecture Section -->
+    <section class="architecture" id="architecture">
+        <div class="container">
+            <div class="architecture-content">
+                <div class="architecture-text">
+                    <h2>Scalable Architecture</h2>
+                    <p>Built on a robust three-tier architecture with separation of concerns. Frontend communicates with backend via REST APIs and WebSockets for real-time updates.</p>
+                    <p>The system uses MySQL/PostgreSQL for persistent storage, Redis for caching, and Docker for containerization. Supports horizontal scaling for handling thousands of concurrent users.</p>
+                    <div class="tech-stack">
+                        <div class="tech-item">React Native Expo</div>
+                        <div class="tech-item">Java Spring Boot</div>
+                        <div class="tech-item">MySQL/PostgreSQL</div>
+                        <div class="tech-item">Redis Caching</div>
+                        <div class="tech-item">Google Maps API</div>
+                        <div class="tech-item">Firebase Messaging</div>
+                    </div>
+                </div>
+                <div>
+                    <svg viewBox="0 0 400 300" style="width: 100%; max-width: 400px;">
+                        <!-- Mobile -->
+                        <rect x="20" y="20" width="80" height="120" fill="#d4e8f0" stroke="#000" stroke-width="2" rx="4"/>
+                        <text x="60" y="85" text-anchor="middle" font-weight="bold" font-size="12">Mobile App</text>
+                        
+                        <!-- Backend -->
+                        <rect x="160" y="20" width="80" height="120" fill="#f0d4e8" stroke="#000" stroke-width="2" rx="4"/>
+                        <text x="200" y="85" text-anchor="middle" font-weight="bold" font-size="12">Backend API</text>
+                        
+                        <!-- Database -->
+                        <rect x="300" y="20" width="80" height="120" fill="#d4e8f0" stroke="#000" stroke-width="2" rx="4"/>
+                        <text x="340" y="85" text-anchor="middle" font-weight="bold" font-size="12">Database</text>
+                        
+                        <!-- Arrows -->
+                        <line x1="100" y1="80" x2="160" y2="80" stroke="#000" stroke-width="2" marker-end="url(#arrowhead)"/>
+                        <line x1="240" y1="80" x2="300" y2="80" stroke="#000" stroke-width="2" marker-end="url(#arrowhead)"/>
+                        
+                        <!-- Arrow marker -->
+                        <defs>
+                            <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+                                <polygon points="0 0, 10 3, 0 6" fill="#000"/>
+                            </marker>
+                        </defs>
+                        
+                        <!-- Services -->
+                        <text x="60" y="200" font-weight="bold" font-size="11">Location Tracking</text>
+                        <text x="200" y="200" font-weight="bold" font-size="11">Geofencing Engine</text>
+                        <text x="340" y="200" font-weight="bold" font-size="11">Persistence</text>
+                    </svg>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Dashboard Preview -->
+    <section class="dashboard-preview">
+        <div class="container">
+            <h2 class="section-title">Dashboard Overview</h2>
+            <p class="section-subtitle">Role-specific interfaces for different user types</p>
+            
+            <div class="preview-grid">
+                <!-- Employee Dashboard -->
+                <div class="preview-card">
+                    <div class="preview-header">Employee Dashboard</div>
+                    <div class="preview-content">
+                        <div class="preview-item">
+                            <span>Status</span>
+                            <span class="status-badge status-active">Checked In</span>
+                        </div>
+                        <div class="preview-item">
+                            <span>Current Location</span>
+                            <span>Office A</span>
+                        </div>
+                        <div class="preview-item">
+                            <span>Hours Today</span>
+                            <span>8.5 hrs</span>
+                        </div>
+                        <div class="preview-item">
+                            <span>Attendance %</span>
+                            <span>96%</span>
+                        </div>
+                        <div class="preview-item">
+                            <span>Late Arrivals</span>
+                            <span>2</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Manager Dashboard -->
+                <div class="preview-card">
+                    <div class="preview-header">Manager Dashboard</div>
+                    <div class="preview-content">
+                        <div class="preview-item">
+                            <span>Team Present</span>
+                            <span>12/15</span>
+                        </div>
+                        <div class="preview-item">
+                            <span>Team Absent</span>
+                            <span>2</span>
+                        </div>
+                        <div class="preview-item">
+                            <span>Late Today</span>
+                            <span>1</span>
+                        </div>
+                        <div class="preview-item">
+                            <span>Pending Leaves</span>
+                            <span class="status-badge status-pending">3</span>
+                        </div>
+                        <div class="preview-item">
+                            <span>Geofences</span>
+                            <span>5</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Admin Dashboard -->
+                <div class="preview-card">
+                    <div class="preview-header">Admin Dashboard</div>
+                    <div class="preview-content">
+                        <div class="preview-item">
+                            <span>Total Users</span>
+                            <span>250</span>
+                        </div>
+                        <div class="preview-item">
+                            <span>Active Today</span>
+                            <span>245</span>
+                        </div>
+                        <div class="preview-item">
+                            <span>Total Geofences</span>
+                            <span>18</span>
+                        </div>
+                        <div class="preview-item">
+                            <span>System Health</span>
+                            <span class="status-badge status-active">99.9%</span>
+                        </div>
+                        <div class="preview-item">
+                            <span>API Uptime</span>
+                            <span>99.95%</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Analytics Section -->
+    <section class="analytics">
+        <div class="container">
+            <h2 class="section-title">Analytics & Insights</h2>
+            <p class="section-subtitle">Data-driven attendance insights and performance metrics</p>
+            
+            <div class="analytics-grid">
+                <div class="chart-container">
+                    <canvas id="attendanceChart"></canvas>
+                </div>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-number">96.5%</div>
+                        <div class="stat-label">Attendance Rate</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">245</div>
+                        <div class="stat-label">Active Users</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">18</div>
+                        <div class="stat-label">Geofences</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">99.9%</div>
+                        <div class="stat-label">Uptime</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Roles Section -->
+    <section class="roles" id="roles">
+        <div class="container">
+            <h2 class="section-title">User Roles & Permissions</h2>
+            <p class="section-subtitle">Customized features for each role</p>
+            
+            <div class="roles-grid">
+                <div class="role-card">
+                    <div class="role-title">Employee</div>
+                    <ul class="role-features">
+                        <li>View current location</li>
+                        <li>Check-in/Check-out status</li>
+                        <li>Attendance history</li>
+                        <li>Apply for leaves</li>
+                        <li>View notifications</li>
+                        <li>Performance metrics</li>
+                    </ul>
+                </div>
+                <div class="role-card">
+                    <div class="role-title">Manager</div>
+                    <ul class="role-features">
+                        <li>View team locations</li>
+                        <li>Team attendance overview</li>
+                        <li>Create geofences</li>
+                        <li>Approve/Reject leaves</li>
+                        <li>Generate reports</li>
+                        <li>Manage team members</li>
+                    </ul>
+                </div>
+                <div class="role-card">
+                    <div class="role-title">Admin</div>
+                    <ul class="role-features">
+                        <li>System-wide user management</li>
+                        <li>Role assignment</li>
+                        <li>Geofence management</li>
+                        <li>System settings</li>
+                        <li>Audit logs</li>
+                        <li>System monitoring</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Technology Stack -->
+    <section class="tech-section" id="technology">
+        <div class="container">
+            <h2 class="section-title">Technology Stack</h2>
+            <p class="section-subtitle">Built with modern, scalable technologies</p>
+            
+            <div class="tech-grid">
+                <div class="tech-card">
+                    <div class="tech-name">React Native</div>
+                    <div class="tech-desc">Cross-platform mobile development</div>
+                </div>
+                <div class="tech-card">
+                    <div class="tech-name">Expo</div>
+                    <div class="tech-desc">Managed React Native platform</div>
+                </div>
+                <div class="tech-card">
+                    <div class="tech-name">Java Spring Boot</div>
+                    <div class="tech-desc">Robust backend framework</div>
+                </div>
+                <div class="tech-card">
+                    <div class="tech-name">MySQL/PostgreSQL</div>
+                    <div class="tech-desc">Reliable database systems</div>
+                </div>
+                <div class="tech-card">
+                    <div class="tech-name">Redis</div>
+                    <div class="tech-desc">High-performance caching</div>
+                </div>
+                <div class="tech-card">
+                    <div class="tech-name">Google Maps API</div>
+                    <div class="tech-desc">Location and mapping services</div>
+                </div>
+                <div class="tech-card">
+                    <div class="tech-name">Firebase</div>
+                    <div class="tech-desc">Push notifications and messaging</div>
+                </div>
+                <div class="tech-card">
+                    <div class="tech-name">Docker</div>
+                    <div class="tech-desc">Container orchestration</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Benefits Section -->
+    <section class="benefits">
+        <div class="container">
+            <h2 class="section-title">Key Benefits</h2>
+            <p class="section-subtitle">Why choose GeoAttendance Pro</p>
+            
+            <div class="benefits-grid">
+                <div class="benefit-item">
+                    <div class="benefit-icon">📊</div>
+                    <div class="benefit-title">Explore Data More Intuitively</div>
+                    <div class="benefit-desc">Interactive dashboards and visualizations allow you to understand attendance patterns at a glance with intuitive charts and real-time metrics.</div>
+                </div>
+                <div class="benefit-item">
+                    <div class="benefit-icon">📈</div>
+                    <div class="benefit-title">Understand Trends Better</div>
+                    <div class="benefit-desc">Advanced analytics reveal attendance trends, peak hours, and patterns. Identify issues early with comprehensive historical data analysis.</div>
+                </div>
+                <div class="benefit-item">
+                    <div class="benefit-icon">💾</div>
+                    <div class="benefit-title">Easily Save or Share</div>
+                    <div class="benefit-desc">Export reports in multiple formats (CSV, PDF) and share with stakeholders. Automated report generation saves time and effort.</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <div class="container">
+            <p>&copy; 2024 GeoAttendance Pro. All rights reserved.</p>
+            <p>
+                <a href="#features">Features</a>
+                <a href="#architecture">Architecture</a>
+                <a href="#roles">Roles</a>
+                <a href="#technology">Technology</a>
+            </p>
+            <p style="font-size: 0.9rem; margin-top: 2rem;">Built with modern geolocation technology and AI-powered attendance tracking.</p>
+        </div>
+    </footer>
+
+    <script>
+        // Attendance Chart
+        const ctx = document.getElementById('attendanceChart').getContext('2d');
+        const attendanceChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                datasets: [{
+                    label: 'Attendance %',
+                    data: [95, 97, 96, 98, 96, 92, 88],
+                    borderColor: '#000000',
+                    backgroundColor: 'rgba(212, 232, 240, 0.3)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.4,
+                    pointBackgroundColor: '#000000',
+                    pointBorderColor: '#ffffff',
+                    pointBorderWidth: 2,
+                    pointRadius: 5
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        display: true,
+                        labels: {
+                            font: { weight: 'bold' }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 100,
+                        ticks: {
+                            callback: function(value) {
+                                return value + '%';
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        // Smooth scrolling
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({ behavior: 'smooth' });
+                }
+            });
+        });
+    </script>
+</body>
+</html>
