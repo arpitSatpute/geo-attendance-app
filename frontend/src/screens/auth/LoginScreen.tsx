@@ -18,15 +18,8 @@ const LoginScreen = ({ navigation }: any) => {
       const result = await AuthService.login(email, password);
       console.log('Login result:', result);
       
-      // Navigate based on user role
-      const role = result.user.role;
-      if (role === 'ADMIN') {
-        navigation.replace('AdminDashboard');
-      } else if (role === 'MANAGER') {
-        navigation.replace('ManagerDashboard');
-      } else {
-        navigation.replace('EmployeeDashboard');
-      }
+      // The App.tsx will automatically handle navigation based on login state
+      // No need to manually navigate - the RootNavigator will detect the auth state change
     } catch (error: any) {
       Alert.alert('Login Failed', error.message || 'Invalid email or password');
     } finally {

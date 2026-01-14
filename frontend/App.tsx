@@ -16,6 +16,11 @@ import AttendanceHistoryScreen from './src/screens/attendance/AttendanceHistoryS
 import LocationMapScreen from './src/screens/location/LocationMapScreen';
 import GeofenceManagementScreen from './src/screens/geofence/GeofenceManagementScreen';
 import ProfileScreen from './src/screens/profile/ProfileScreen';
+import ReportsScreen from './src/screens/reports/ReportsScreen';
+import ChangePasswordScreen from './src/screens/settings/ChangePasswordScreen';
+import NotificationSettingsScreen from './src/screens/settings/NotificationSettingsScreen';
+import PrivacySettingsScreen from './src/screens/settings/PrivacySettingsScreen';
+import AddUserScreen from './src/screens/admin/AddUserScreen';
 
 // Import services
 import { LocationService } from './src/services/LocationService';
@@ -35,6 +40,21 @@ const AuthStack = () => {
     >
       <Stack.Screen name="Login" component={LoginScreen} />
       <Stack.Screen name="Register" component={RegisterScreen} />
+    </Stack.Navigator>
+  );
+};
+
+import LeaveApplicationScreen from './src/screens/employee/LeaveApplicationScreen';
+// Employee Stack Navigator
+const EmployeeStack = () => {
+  return (
+    <Stack.Navigator>
+      <Stack.Screen name="EmployeeTabs" component={EmployeeTabNavigator} options={{ headerShown: false }} />
+      <Stack.Screen name="LeaveApplication" component={LeaveApplicationScreen} options={{ headerTitle: 'Apply for Leave' }} />
+      <Stack.Screen name="Reports" component={ReportsScreen} options={{ headerTitle: 'Reports' }} />
+      <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} options={{ headerTitle: 'Change Password' }} />
+      <Stack.Screen name="NotificationSettings" component={NotificationSettingsScreen} options={{ headerTitle: 'Notifications' }} />
+      <Stack.Screen name="PrivacySettings" component={PrivacySettingsScreen} options={{ headerTitle: 'Privacy' }} />
     </Stack.Navigator>
   );
 };
@@ -89,8 +109,27 @@ const EmployeeTabNavigator = () => {
   );
 };
 
+// Manager Stack Navigator
+import TeamAttendanceScreen from './src/screens/manager/TeamAttendanceScreen';
+import LeaveApprovalScreen from './src/screens/manager/LeaveApprovalScreen';
+const ManagerStack = () => {
+  return (
+    <Stack.Navigator>
+      <Stack.Screen name="ManagerTabs" component={ManagerTabNavigator} options={{ headerShown: false }} />
+      <Stack.Screen name="TeamAttendance" component={TeamAttendanceScreen} options={{ headerTitle: 'Team Attendance' }} />
+      <Stack.Screen name="LeaveApproval" component={LeaveApprovalScreen} options={{ headerTitle: 'Leave Approval' }} />
+      <Stack.Screen name="Reports" component={ReportsScreen} options={{ headerTitle: 'Reports' }} />
+      <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} options={{ headerTitle: 'Change Password' }} />
+      <Stack.Screen name="NotificationSettings" component={NotificationSettingsScreen} options={{ headerTitle: 'Notifications' }} />
+      <Stack.Screen name="PrivacySettings" component={PrivacySettingsScreen} options={{ headerTitle: 'Privacy' }} />
+    </Stack.Navigator>
+  );
+};
+
 // Manager Tab Navigator
 const ManagerTabNavigator = () => {
+  // Import TeamManagementScreen
+  const TeamManagementScreen = require('./src/screens/manager/TeamManagementScreen').default;
   return (
     <Tab.Navigator
       screenOptions={{
@@ -109,6 +148,14 @@ const ManagerTabNavigator = () => {
         options={{
           tabBarLabel: 'Dashboard',
           headerTitle: 'Team Overview',
+        }}
+      />
+      <Tab.Screen
+        name="Teams"
+        component={TeamManagementScreen}
+        options={{
+          tabBarLabel: 'Teams',
+          headerTitle: 'Team Management',
         }}
       />
       <Tab.Screen
@@ -136,6 +183,20 @@ const ManagerTabNavigator = () => {
         }}
       />
     </Tab.Navigator>
+  );
+};
+
+// Admin Stack Navigator
+const AdminStack = () => {
+  return (
+    <Stack.Navigator>
+      <Stack.Screen name="AdminTabs" component={AdminTabNavigator} options={{ headerShown: false }} />
+      <Stack.Screen name="AddUser" component={AddUserScreen} options={{ headerTitle: 'Add User' }} />
+      <Stack.Screen name="Reports" component={ReportsScreen} options={{ headerTitle: 'Reports' }} />
+      <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} options={{ headerTitle: 'Change Password' }} />
+      <Stack.Screen name="NotificationSettings" component={NotificationSettingsScreen} options={{ headerTitle: 'Notifications' }} />
+      <Stack.Screen name="PrivacySettings" component={PrivacySettingsScreen} options={{ headerTitle: 'Privacy' }} />
+    </Stack.Navigator>
   );
 };
 
@@ -197,11 +258,11 @@ const RootNavigator = ({ isLoggedIn, userRole }) => {
 
   switch (userRole) {
     case 'EMPLOYEE':
-      return <EmployeeTabNavigator />;
+      return <EmployeeStack />;
     case 'MANAGER':
-      return <ManagerTabNavigator />;
+      return <ManagerStack />;
     case 'ADMIN':
-      return <AdminTabNavigator />;
+      return <AdminStack />;
     default:
       return <AuthStack />;
   }
@@ -215,6 +276,11 @@ export default function App() {
   useEffect(() => {
     // Initialize app
     initializeApp();
+
+    // Poll for auth state changes every 500ms for faster login detection
+    const authInterval = setInterval(refreshAuthState, 500);
+
+    return () => clearInterval(authInterval);
   }, []);
 
   const initializeApp = async () => {
@@ -234,31 +300,29 @@ export default function App() {
         LocationService.startLocationTracking();
       }
 
-      // Setup Firebase Cloud Messaging
-      const authStatus = await messaging().requestPermission();
-      const enabled =
-        authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
-        authStatus === messaging.AuthorizationStatus.PROVISIONAL;
-
-      if (enabled) {
-        // Get FCM token
-        const token = await messaging().getToken();
-        console.log('FCM Token:', token);
-
-        // Listen for messages
-        messaging().onMessage(async (remoteMessage) => {
-          console.log('Notification received:', remoteMessage);
-        });
-
-        messaging().setBackgroundMessageHandler(async (remoteMessage) => {
-          console.log('Background notification:', remoteMessage);
-        });
-      }
-
       setIsLoading(false);
     } catch (error) {
       console.error('Error initializing app:', error);
       setIsLoading(false);
+    }
+  };
+
+  // Function to refresh auth state (call this after login)
+  const refreshAuthState = async () => {
+    try {
+      const token = await AuthService.getToken();
+      if (token) {
+        setIsLoggedIn(true);
+        const user = await AuthService.getCurrentUser();
+        setUserRole(user.role);
+      } else {
+        setIsLoggedIn(false);
+        setUserRole(null);
+      }
+    } catch (error) {
+      console.error('Error refreshing auth state:', error);
+      setIsLoggedIn(false);
+      setUserRole(null);
     }
   };
 
@@ -268,7 +332,7 @@ export default function App() {
 
   return (
     <Provider store={store}>
-      <NavigationContainer>
+      <NavigationContainer key={isLoggedIn ? `logged-${userRole}` : 'logged-out'}>
         <RootNavigator isLoggedIn={isLoggedIn} userRole={userRole} />
       </NavigationContainer>
     </Provider>

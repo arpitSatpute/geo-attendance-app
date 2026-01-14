@@ -1,31 +1,397 @@
-import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  ActivityIndicator,
+  RefreshControl,
+  Alert,
+} from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import { AuthService } from '../../services/AuthService';
+import { ApiService } from '../../services/ApiService';
 
 const ManagerDashboard = () => {
+  const navigation = useNavigation<any>();
+  const [user, setUser] = useState<any>(null);
+  const [teamData, setTeamData] = useState<any>(null);
+  const [teamLocations, setTeamLocations] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [currentTime, setCurrentTime] = useState(new Date());
+
+  useEffect(() => {
+    loadData();
+    
+    // Update clock every second
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, []);
+
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      const [userData, locations] = await Promise.all([
+        AuthService.getCurrentUser(),
+        ApiService.getTeamLocations().catch(() => []),
+      ]);
+      
+      setUser(userData);
+      setTeamLocations(locations || []);
+      
+      // Calculate team statistics
+      calculateTeamStats(locations || []);
+    } catch (error: any) {
+      console.error('Error loading data:', error);
+      if (error.response?.status === 401) {
+        Alert.alert('Error', 'Session expired. Please login again.');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const calculateTeamStats = (locations: any[]) => {
+    const stats = {
+      totalMembers: locations.length,
+      activeNow: locations.filter(l => l.isActive).length,
+      onField: locations.filter(l => l.status === 'WORKING').length,
+      offline: locations.filter(l => !l.isActive).length,
+    };
+    setTeamData(stats);
+  };
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadData();
+    setRefreshing(false);
+  };
+
+  const getGreeting = () => {
+    const hour = currentTime.getHours();
+    if (hour < 12) return 'Good Morning';
+    if (hour < 18) return 'Good Afternoon';
+    return 'Good Evening';
+  };
+
+  const formatTime = (dateString: string) => {
+    if (!dateString) return 'N/A';
+    const date = new Date(dateString);
+    return date.toLocaleTimeString('en-US', { 
+      hour: '2-digit', 
+      minute: '2-digit',
+      hour12: true 
+    });
+  };
+
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#FF9800" />
+      </View>
+    );
+  }
+
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Manager Dashboard</Text>
-      <Text style={styles.text}>Manage your team</Text>
-    </View>
+    <ScrollView
+      style={styles.container}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+      }
+    >
+      {/* Header Section */}
+      <View style={styles.header}>
+        <Text style={styles.greeting}>{getGreeting()},</Text>
+        <Text style={styles.userName}>{user?.firstName || 'Manager'}</Text>
+        <Text style={styles.role}>Team Manager</Text>
+        <Text style={styles.clock}>
+          {currentTime.toLocaleTimeString('en-US', { 
+            hour: '2-digit', 
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: true 
+          })}
+        </Text>
+      </View>
+
+      {/* Team Statistics */}
+      <View style={styles.statsContainer}>
+        <Text style={styles.sectionTitle}>Team Overview</Text>
+        <View style={styles.statsGrid}>
+          <View style={[styles.statCard, styles.primaryCard]}>
+            <Text style={styles.statNumber}>{teamData?.totalMembers || 0}</Text>
+            <Text style={styles.statLabel}>Total Members</Text>
+          </View>
+          <View style={[styles.statCard, styles.successCard]}>
+            <Text style={styles.statNumber}>{teamData?.activeNow || 0}</Text>
+            <Text style={styles.statLabel}>Active Now</Text>
+          </View>
+        </View>
+        <View style={styles.statsGrid}>
+          <View style={[styles.statCard, styles.warningCard]}>
+            <Text style={styles.statNumber}>{teamData?.onField || 0}</Text>
+            <Text style={styles.statLabel}>On Field</Text>
+          </View>
+          <View style={[styles.statCard, styles.dangerCard]}>
+            <Text style={styles.statNumber}>{teamData?.offline || 0}</Text>
+            <Text style={styles.statLabel}>Offline</Text>
+          </View>
+        </View>
+      </View>
+
+      {/* Quick Actions */}
+      <View style={styles.actionsContainer}>
+        <Text style={styles.sectionTitle}>Quick Actions</Text>
+        <View style={styles.actionsGrid}>
+          <TouchableOpacity 
+            style={styles.actionButton}
+            onPress={() => navigation.navigate('TeamAttendance')}
+          >
+            <Text style={styles.actionIcon}>📊</Text>
+            <Text style={styles.actionText}>Team Attendance</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={styles.actionButton}
+            onPress={() => navigation.navigate('LeaveApproval')}
+          >
+            <Text style={styles.actionIcon}>✅</Text>
+            <Text style={styles.actionText}>Approve Leaves</Text>
+          </TouchableOpacity>
+        </View>
+        <View style={styles.actionsGrid}>
+          <TouchableOpacity 
+            style={styles.actionButton}
+            onPress={() => navigation.navigate('Reports')}
+          >
+            <Text style={styles.actionIcon}>📈</Text>
+            <Text style={styles.actionText}>View Reports</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={styles.actionButton}
+            onPress={() => navigation.navigate('Geofences')}
+          >
+            <Text style={styles.actionIcon}>🗺️</Text>
+            <Text style={styles.actionText}>Geofences</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* Team Members List */}
+      <View style={styles.teamListContainer}>
+        <Text style={styles.sectionTitle}>Team Members</Text>
+        {teamLocations.length === 0 ? (
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyText}>No team members found</Text>
+          </View>
+        ) : (
+          teamLocations.map((member, index) => (
+            <View key={index} style={styles.memberCard}>
+              <View style={styles.memberInfo}>
+                <View style={[
+                  styles.statusDot, 
+                  member.isActive ? styles.statusActive : styles.statusInactive
+                ]} />
+                <View style={styles.memberDetails}>
+                  <Text style={styles.memberName}>
+                    {member.firstName} {member.lastName}
+                  </Text>
+                  <Text style={styles.memberEmail}>{member.email}</Text>
+                  <Text style={styles.memberStatus}>
+                    {member.status || 'Unknown'} • Last seen: {formatTime(member.lastUpdate)}
+                  </Text>
+                </View>
+              </View>
+            </View>
+          ))
+        )}
+      </View>
+    </ScrollView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
     backgroundColor: '#f5f5f5',
   },
-  title: {
-    fontSize: 24,
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f5f5f5',
+  },
+  header: {
+    backgroundColor: '#FF9800',
+    padding: 20,
+    paddingTop: 10,
+    paddingBottom: 30,
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
+  },
+  greeting: {
+    fontSize: 16,
+    color: '#fff',
+    opacity: 0.9,
+  },
+  userName: {
+    fontSize: 28,
     fontWeight: 'bold',
+    color: '#fff',
+    marginTop: 5,
+  },
+  role: {
+    fontSize: 14,
+    color: '#fff',
+    opacity: 0.9,
+    marginTop: 5,
+  },
+  clock: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#fff',
+    marginTop: 10,
+  },
+  statsContainer: {
+    padding: 20,
+    paddingTop: 10,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 15,
+    color: '#333',
+  },
+  statsGrid: {
+    flexDirection: 'row',
+    gap: 15,
+    marginBottom: 15,
+  },
+  statCard: {
+    flex: 1,
+    padding: 20,
+    borderRadius: 15,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  primaryCard: {
+    backgroundColor: '#2196F3',
+  },
+  successCard: {
+    backgroundColor: '#4CAF50',
+  },
+  warningCard: {
+    backgroundColor: '#FF9800',
+  },
+  dangerCard: {
+    backgroundColor: '#F44336',
+  },
+  statNumber: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: '#fff',
+  },
+  statLabel: {
+    fontSize: 12,
+    color: '#fff',
+    opacity: 0.9,
+    marginTop: 5,
+  },
+  actionsContainer: {
+    paddingHorizontal: 20,
+    marginBottom: 20,
+  },
+  actionsGrid: {
+    flexDirection: 'row',
+    gap: 15,
+    marginBottom: 15,
+  },
+  actionButton: {
+    flex: 1,
+    backgroundColor: '#fff',
+    padding: 20,
+    borderRadius: 15,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  actionIcon: {
+    fontSize: 32,
     marginBottom: 10,
   },
-  text: {
+  actionText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
+    textAlign: 'center',
+  },
+  teamListContainer: {
+    paddingHorizontal: 20,
+    paddingBottom: 30,
+  },
+  memberCard: {
+    backgroundColor: '#fff',
+    padding: 15,
+    borderRadius: 10,
+    marginBottom: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  memberInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  statusDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    marginRight: 12,
+  },
+  statusActive: {
+    backgroundColor: '#4CAF50',
+  },
+  statusInactive: {
+    backgroundColor: '#999',
+  },
+  memberDetails: {
+    flex: 1,
+  },
+  memberName: {
     fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 3,
+  },
+  memberEmail: {
+    fontSize: 13,
     color: '#666',
+    marginBottom: 3,
+  },
+  memberStatus: {
+    fontSize: 12,
+    color: '#999',
+  },
+  emptyState: {
+    padding: 40,
+    alignItems: 'center',
+  },
+  emptyText: {
+    fontSize: 16,
+    color: '#999',
   },
 });
 

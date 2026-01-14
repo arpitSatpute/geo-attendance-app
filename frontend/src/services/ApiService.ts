@@ -4,6 +4,7 @@ import config from '../config';
 
 class ApiServiceClass {
   private api: AxiosInstance;
+  private tokenCache: string | null = null;
 
   constructor() {
     this.api = axios.create({
@@ -15,14 +16,27 @@ class ApiServiceClass {
       },
     });
 
+    // Initialize token cache
+    this.initializeTokenCache();
+
     // Add request interceptor
     this.api.interceptors.request.use(
       async (config) => {
-        const token = await AsyncStorage.getItem('authToken');
+        // Try to get token from cache first, then from AsyncStorage
+        let token = this.tokenCache;
+        if (!token) {
+          token = await AsyncStorage.getItem('authToken');
+          if (token) {
+            this.tokenCache = token;
+          }
+        }
+        
         if (token) {
           config.headers.Authorization = `Bearer ${token}`;
+          console.log('API Request:', config.method?.toUpperCase(), config.url, '- Token present');
+        } else {
+          console.log('API Request:', config.method?.toUpperCase(), config.url, '- NO TOKEN');
         }
-        console.log('API Request:', config.method?.toUpperCase(), config.url);
         return config;
       },
       (error) => {
@@ -41,7 +55,8 @@ class ApiServiceClass {
         console.error('API Error:', error.response?.status, error.message);
         
         if (error.response?.status === 401) {
-          // Token expired or invalid
+          // Token expired or invalid - clear cache
+          this.tokenCache = null;
           await AsyncStorage.removeItem('authToken');
           await AsyncStorage.removeItem('user');
           // You may want to navigate to login screen here
@@ -50,6 +65,28 @@ class ApiServiceClass {
         return Promise.reject(error);
       }
     );
+  }
+
+  // Initialize token cache from AsyncStorage
+  private async initializeTokenCache() {
+    try {
+      const token = await AsyncStorage.getItem('authToken');
+      if (token) {
+        this.tokenCache = token;
+      }
+    } catch (error) {
+      console.error('Error initializing token cache:', error);
+    }
+  }
+
+  // Method to update token cache (call this after login)
+  public setTokenCache(token: string) {
+    this.tokenCache = token;
+  }
+
+  // Method to clear token cache (call this after logout)
+  public clearTokenCache() {
+    this.tokenCache = null;
   }
 
   /**
@@ -208,12 +245,21 @@ class ApiServiceClass {
    * Location endpoints
    */
   async updateLocation(latitude: number, longitude: number, accuracy: number) {
-    const response = await this.api.post('/location/update', {
-      latitude,
-      longitude,
-      accuracy,
-    });
-    return response.data;
+    try {
+      const response = await this.api.post('/location/update', {
+        latitude,
+        longitude,
+        accuracy,
+      });
+      return response.data;
+    } catch (error: any) {
+      // If endpoint doesn't exist, silently fail (will be implemented later)
+      if (error.response?.status === 401 || error.response?.status === 404) {
+        console.log('Location update endpoint not available yet');
+        return null;
+      }
+      throw error;
+    }
   }
 
   async getCurrentLocation() {
@@ -226,9 +272,15 @@ class ApiServiceClass {
     return response.data;
   }
 
+  // Get teams for the current manager
   async getTeamLocations() {
-    const response = await this.api.get('/location/team');
-    return response.data;
+    try {
+      const response = await this.api.get('/teams/manager/me');
+      return response.data;
+    } catch (error) {
+      console.log('Team locations endpoint not available, returning empty data');
+      return [];
+    }
   }
 
   /**
@@ -295,6 +347,29 @@ class ApiServiceClass {
       responseType: format === 'pdf' ? 'blob' : 'text',
     });
     return response.data;
+  }
+
+  /**
+   * Generic HTTP methods
+   */
+  async get(url: string, config?: any) {
+    const response = await this.api.get(url, config);
+    return response;
+  }
+
+  async post(url: string, data?: any, config?: any) {
+    const response = await this.api.post(url, data, config);
+    return response;
+  }
+
+  async put(url: string, data?: any, config?: any) {
+    const response = await this.api.put(url, data, config);
+    return response;
+  }
+
+  async delete(url: string, config?: any) {
+    const response = await this.api.delete(url, config);
+    return response;
   }
 }
 

@@ -33,6 +33,12 @@
         "ACCESS_BACKGROUND_LOCATION",
         "INTERNET"
       ]
+      ,
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyClbawxPRO3wFUX4nEk8ufVfnwJR5L3X38"
+        }
+      }
     },
     "plugins": [
       [
@@ -45,7 +51,8 @@
     "extra": {
       "eas": {
         "projectId": "your-project-id"
-      }
+      },
+      "apiUrl": "http://192.168.1.5:8080/api"
     }
   }
 }

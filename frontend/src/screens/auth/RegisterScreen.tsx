@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ScrollView } from 'react-native';
+import { Picker } from '@react-native-picker/picker';
 import { AuthService } from '../../services/AuthService';
 
 const RegisterScreen = ({ navigation }: any) => {
@@ -9,6 +10,7 @@ const RegisterScreen = ({ navigation }: any) => {
     firstName: '',
     lastName: '',
     phone: '',
+    role: 'EMPLOYEE', // Default role
   });
   const [loading, setLoading] = useState(false);
 
@@ -22,8 +24,8 @@ const RegisterScreen = ({ navigation }: any) => {
 
     setLoading(true);
     try {
-      await AuthService.register({ ...formData, role: 'EMPLOYEE' });
-      Alert.alert('Success', 'Registration successful! Please login.');
+      await AuthService.register(formData);
+      Alert.alert('Success', `${formData.role} account created successfully! Please login.`);
       navigation.navigate('Login');
     } catch (error: any) {
       Alert.alert('Error', error.message || 'Registration failed');
@@ -76,6 +78,21 @@ const RegisterScreen = ({ navigation }: any) => {
         secureTextEntry
       />
 
+      <View style={styles.pickerContainer}>
+        <Text style={styles.pickerLabel}>Account Type *</Text>
+        <View style={styles.pickerWrapper}>
+          <Picker
+            selectedValue={formData.role}
+            onValueChange={(value) => setFormData({ ...formData, role: value })}
+            style={styles.picker}
+          >
+            <Picker.Item label="Employee" value="EMPLOYEE" />
+            <Picker.Item label="Manager" value="MANAGER" />
+            <Picker.Item label="Admin" value="ADMIN" />
+          </Picker>
+        </View>
+      </View>
+
       <TouchableOpacity
         style={styles.button}
         onPress={handleRegister}
@@ -122,6 +139,25 @@ const styles = StyleSheet.create({
     marginBottom: 15,
     borderWidth: 1,
     borderColor: '#ddd',
+  },
+  pickerContainer: {
+    marginBottom: 15,
+  },
+  pickerLabel: {
+    fontSize: 14,
+    color: '#333',
+    marginBottom: 8,
+    fontWeight: '500',
+  },
+  pickerWrapper: {
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    overflow: 'hidden',
+  },
+  picker: {
+    height: 50,
   },
   button: {
     backgroundColor: '#007AFF',

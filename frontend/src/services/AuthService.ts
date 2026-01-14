@@ -13,8 +13,12 @@ export class AuthService {
       // Store token and user data
       await AsyncStorage.setItem('authToken', token);
       await AsyncStorage.setItem('user', JSON.stringify(user));
+      
+      // Update the API service token cache immediately
+      ApiService.setTokenCache(token);
 
       console.log('Login successful, user role:', user.role);
+      console.log('Token cached for immediate use');
       return { token, user };
     } catch (error: any) {
       console.error('Login error:', error);
@@ -42,6 +46,9 @@ export class AuthService {
       await ApiService.logout();
       await AsyncStorage.removeItem('authToken');
       await AsyncStorage.removeItem('user');
+      
+      // Clear the API service token cache
+      ApiService.clearTokenCache();
     } catch (error) {
       console.error('Logout error:', error);
       throw error;

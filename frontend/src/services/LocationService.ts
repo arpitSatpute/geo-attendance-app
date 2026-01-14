@@ -20,49 +20,9 @@ export class LocationService {
         return;
       }
 
-      // Request background location permissions
-      const { status: backgroundStatus } = await Location.requestBackgroundPermissionsAsync();
-      if (backgroundStatus !== 'granted') {
-        console.warn('Background location permission denied');
-      }
-
-      // Define background task
-      TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }) => {
-        if (error) {
-          console.error('Background location error:', error);
-          return;
-        }
-
-        if (data) {
-          const { locations } = data as any;
-          if (locations && locations.length > 0) {
-            const location = locations[0];
-            this.currentLocation = location;
-            
-            // Send location to backend
-            await this.sendLocationToBackend(location);
-            
-            // Trigger callback
-            if (this.locationUpdateCallback) {
-              this.locationUpdateCallback(location);
-            }
-          }
-        }
-      });
-
-      // Start background location tracking
-      await Location.startLocationUpdatesAsync(LOCATION_TASK_NAME, {
-        accuracy: Location.Accuracy.High,
-        timeInterval: 10000, // Update every 10 seconds
-        distanceInterval: 50, // Or when moved 50 meters
-        foregroundService: {
-          notificationTitle: 'GeoAttendance Pro',
-          notificationBody: 'Tracking your location for attendance',
-          notificationColor: '#000000',
-        },
-      });
-
-      console.log('Location tracking started');
+      console.log('Location tracking started (foreground only)');
+      // Background location tracking disabled for now due to token access issues
+      // Will be implemented later with proper token handling
     } catch (error) {
       console.error('Error starting location tracking:', error);
     }
@@ -100,48 +60,9 @@ export class LocationService {
    * Send location to backend
    */
   private static async sendLocationToBackend(location: Location.LocationObject) {
-    try {
-      const { coords } = location;
-      
-      // Check if user is inside a geofence
-      const geofence = await AttendanceService.findGeofenceContainingPoint(
-        coords.latitude,
-        coords.longitude
-      );
-
-      // Send location update to backend
-      await AttendanceService.updateLocation(
-        coords.latitude,
-        coords.longitude,
-        coords.accuracy || 0
-      );
-
-      // Handle geofence events
-      if (geofence) {
-        // Check if this is a new geofence entry
-        const lastGeofence = await this.getLastGeofence();
-        if (!lastGeofence || lastGeofence.id !== geofence.id) {
-          // New geofence entry - trigger check-in
-          await AttendanceService.checkIn(
-            coords.latitude,
-            coords.longitude,
-            coords.accuracy || 0
-          );
-        }
-      } else {
-        // User left geofence - trigger check-out
-        const lastGeofence = await this.getLastGeofence();
-        if (lastGeofence) {
-          await AttendanceService.checkOut(
-            coords.latitude,
-            coords.longitude,
-            coords.accuracy || 0
-          );
-        }
-      }
-    } catch (error) {
-      console.error('Error sending location to backend:', error);
-    }
+    // Disabled for now - will be re-enabled when backend endpoints are ready
+    console.log('Background location update disabled');
+    return;
   }
 
   /**
