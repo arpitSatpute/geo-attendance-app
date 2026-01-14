@@ -15,12 +15,14 @@
 /Users/arpitrameshsatpute/Desktop/geo-attendance-app/backend/src/main/java/com/geoattendance/config/NoOpMailConfig.java
 /Users/arpitrameshsatpute/Desktop/geo-attendance-app/backend/src/main/java/com/geoattendance/entity/Geofence.java
 /Users/arpitrameshsatpute/Desktop/geo-attendance-app/backend/src/main/java/com/geoattendance/repository/UserRepository.java
+/Users/arpitrameshsatpute/Desktop/geo-attendance-app/backend/src/main/java/com/geoattendance/controller/DebugController.java
 /Users/arpitrameshsatpute/Desktop/geo-attendance-app/backend/src/main/java/com/geoattendance/service/NotificationService.java
 /Users/arpitrameshsatpute/Desktop/geo-attendance-app/backend/src/main/java/com/geoattendance/repository/AttendanceRepository.java
 /Users/arpitrameshsatpute/Desktop/geo-attendance-app/backend/src/main/java/com/geoattendance/controller/AttendanceController.java
 /Users/arpitrameshsatpute/Desktop/geo-attendance-app/backend/src/main/java/com/geoattendance/entity/AttendanceRecord.java
 /Users/arpitrameshsatpute/Desktop/geo-attendance-app/backend/src/main/java/com/geoattendance/service/AttendanceService.java
 /Users/arpitrameshsatpute/Desktop/geo-attendance-app/backend/src/main/java/com/geoattendance/service/GeofencingService.java
+/Users/arpitrameshsatpute/Desktop/geo-attendance-app/backend/src/main/java/com/geoattendance/controller/PublicDebugController.java
 /Users/arpitrameshsatpute/Desktop/geo-attendance-app/backend/src/main/java/com/geoattendance/dto/AuthRequest.java
 /Users/arpitrameshsatpute/Desktop/geo-attendance-app/backend/src/main/java/com/geoattendance/repository/LeaveRepository.java
 /Users/arpitrameshsatpute/Desktop/geo-attendance-app/backend/src/main/java/com/geoattendance/security/JwtTokenProvider.java

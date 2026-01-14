@@ -141,6 +141,13 @@ public class GeofencingService {
     }
     
     /**
+     * Get all geofences (including inactive)
+     */
+    public List<Geofence> getAllGeofences() {
+        return geofenceRepository.findAll();
+    }
+    
+    /**
      * Get all active geofences
      */
     public List<Geofence> getAllActiveGeofences() {
@@ -153,6 +160,15 @@ public class GeofencingService {
     @Transactional
     public Geofence createGeofence(Geofence geofence) {
         log.info("Creating geofence: {}", geofence.getName());
+        
+        // Create GeoJsonPoint from latitude and longitude if not already set
+        if (geofence.getLocation() == null && geofence.getLatitude() != null && geofence.getLongitude() != null) {
+            geofence.setLocation(new org.springframework.data.mongodb.core.geo.GeoJsonPoint(
+                geofence.getLongitude(), 
+                geofence.getLatitude()
+            ));
+        }
+        
         return geofenceRepository.save(geofence);
     }
     
@@ -172,8 +188,17 @@ public class GeofencingService {
         geofence.setRadiusMeters(geofenceUpdate.getRadiusMeters());
         geofence.setPolygonCoordinates(geofenceUpdate.getPolygonCoordinates());
         geofence.setGeofenceType(geofenceUpdate.getGeofenceType());
+        geofence.setIsActive(geofenceUpdate.getIsActive());
         
-        log.info("Updated geofence: {}", id);
+        // Update GeoJsonPoint from latitude and longitude
+        if (geofenceUpdate.getLatitude() != null && geofenceUpdate.getLongitude() != null) {
+            geofence.setLocation(new org.springframework.data.mongodb.core.geo.GeoJsonPoint(
+                geofenceUpdate.getLongitude(), 
+                geofenceUpdate.getLatitude()
+            ));
+        }
+        
+        log.info("Updated geofence: {} - Active: {}", id, geofenceUpdate.getIsActive());
         return geofenceRepository.save(geofence);
     }
     

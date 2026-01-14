@@ -1,0 +1,29 @@
+<!--
+  Example toolchains.xml. Copy this to ~/.m2/toolchains.xml and adjust <jdkHome> to the path of your JDK 17 installation.
+  On macOS you can use `/usr/libexec/java_home -v 17` to find the JDK 17 home directory.
+
+  Example usage:
+    cp doc/toolchains.example.xml ~/.m2/toolchains.xml
+    # edit ~/.m2/toolchains.xml and set the correct <jdkHome> value
+-->
+<toolchains xmlns="http://maven.apache.org/TOOLCHAINS/1.1.0"
+            xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+            xsi:schemaLocation="http://maven.apache.org/TOOLCHAINS/1.1.0
+                                https://maven.apache.org/xsd/toolchains-1.1.0.xsd">
+
+  <toolchain>
+    <type>jdk</type>
+    <provides>
+      <version>17</version>
+      <!-- optionally specify vendor, e.g. "temurin" or "oracle" -->
+      <!-- <vendor>temurin</vendor> -->
+    </provides>
+    <configuration>
+      <!-- Set this to the JDK 17 installation directory on your machine. -->
+      <!-- macOS: /Library/Java/JavaVirtualMachines/temurin-17.jdk/Contents/Home -->
+      <jdkHome>/Library/Java/JavaVirtualMachines/<your-jdk-17>/Contents/Home</jdkHome>
+    </configuration>
+  </toolchain>
+
+</toolchains>
+

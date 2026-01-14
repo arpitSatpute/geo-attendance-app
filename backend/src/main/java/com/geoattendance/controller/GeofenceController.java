@@ -4,8 +4,9 @@ import com.geoattendance.entity.Geofence;
 import com.geoattendance.entity.User;
 import com.geoattendance.service.GeofencingService;
 import com.geoattendance.service.AuthenticationService;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import com.geoattendance.service.TeamService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -14,23 +15,32 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/geofences")
-@RequiredArgsConstructor
-@Slf4j
 public class GeofenceController {
-    
+
+    private static final Logger log = LoggerFactory.getLogger(GeofenceController.class);
+
     private final GeofencingService geofencingService;
     private final AuthenticationService authenticationService;
-    
+    private final TeamService teamService;
+
+    public GeofenceController(GeofencingService geofencingService, 
+                            AuthenticationService authenticationService,
+                            TeamService teamService) {
+        this.geofencingService = geofencingService;
+        this.authenticationService = authenticationService;
+        this.teamService = teamService;
+    }
+
     /**
-     * Get all active geofences
+     * Get all geofences (including inactive ones for management purposes)
      */
     @GetMapping
     @PreAuthorize("hasAnyRole('EMPLOYEE', 'MANAGER', 'ADMIN')")
     public ResponseEntity<List<Geofence>> getAllGeofences() {
-        List<Geofence> geofences = geofencingService.getAllActiveGeofences();
+        List<Geofence> geofences = geofencingService.getAllGeofences();
         return ResponseEntity.ok(geofences);
     }
-    
+
     /**
      * Get geofence by ID
      */
@@ -40,7 +50,7 @@ public class GeofenceController {
         Geofence geofence = geofencingService.getGeofenceById(id);
         return ResponseEntity.ok(geofence);
     }
-    
+
     /**
      * Create a new geofence (Manager/Admin only)
      */
@@ -50,9 +60,24 @@ public class GeofenceController {
         User currentUser = authenticationService.getCurrentUser();
         geofence.setCreatedById(currentUser.getId());
         Geofence created = geofencingService.createGeofence(geofence);
+
+        // If the creator is a manager, associate this geofence with their team
+        if ("MANAGER".equalsIgnoreCase(currentUser.getRole())) {
+            try {
+                List<com.geoattendance.entity.Team> teams = teamService.getTeamsByManager(currentUser.getId());
+                if (!teams.isEmpty()) {
+                    com.geoattendance.entity.Team team = teams.get(0);
+                    teamService.setGeofenceForTeam(team.getId(), created.getId());
+                    log.info("Associated geofence {} with team {}", created.getId(), team.getId());
+                }
+            } catch (Exception e) {
+                log.warn("Could not associate geofence with team: {}", e.getMessage());
+                // Don't fail the request if team association fails
+            }
+        }
         return ResponseEntity.ok(created);
     }
-    
+
     /**
      * Update a geofence
      */
@@ -65,7 +90,7 @@ public class GeofenceController {
         Geofence updated = geofencingService.updateGeofence(id, geofenceUpdate);
         return ResponseEntity.ok(updated);
     }
-    
+
     /**
      * Delete a geofence
      */
@@ -75,7 +100,7 @@ public class GeofenceController {
         geofencingService.deleteGeofence(id);
         return ResponseEntity.noContent().build();
     }
-    
+
     /**
      * Check if a point is inside a geofence
      */
@@ -95,7 +120,7 @@ public class GeofenceController {
         }
         return ResponseEntity.ok(inside);
     }
-    
+
     /**
      * Find geofence containing a point
      */
@@ -108,7 +133,7 @@ public class GeofenceController {
         Geofence geofence = geofencingService.findGeofenceContainingPoint(latitude, longitude);
         return ResponseEntity.ok(geofence);
     }
-    
+
     /**
      * Calculate distance between two points
      */

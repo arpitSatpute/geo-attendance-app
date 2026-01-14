@@ -7,12 +7,14 @@ import com.geoattendance.service.AuthenticationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/attendance")
@@ -61,6 +63,17 @@ public class AttendanceController {
         List<AttendanceRecord> records = attendanceService.getTeamAttendance(currentUser, startDate, endDate);
         return ResponseEntity.ok(records);
     }
+
+    /**
+     * Get current status of all team members (for manager dashboard)
+     */
+    @GetMapping("/team/status")
+    @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN')")
+    public ResponseEntity<List<AttendanceService.TeamMemberStatus>> getTeamStatus() {
+        User currentUser = authenticationService.getCurrentUser();
+        List<AttendanceService.TeamMemberStatus> status = attendanceService.getTeamCurrentStatus(currentUser);
+        return ResponseEntity.ok(status);
+    }
     
     /**
      * Get attendance statistics
@@ -81,14 +94,21 @@ public class AttendanceController {
      */
     @PostMapping("/check-in")
     @PreAuthorize("hasAnyRole('EMPLOYEE', 'MANAGER', 'ADMIN')")
-    public ResponseEntity<AttendanceRecord> checkIn(
-        @RequestParam Double latitude,
-        @RequestParam Double longitude,
-        @RequestParam(required = false) Float accuracy
-    ) {
-        User currentUser = authenticationService.getCurrentUser();
-        AttendanceRecord record = attendanceService.manualCheckIn(currentUser, latitude, longitude, accuracy);
-        return ResponseEntity.ok(record);
+    public ResponseEntity<?> checkIn(@RequestBody CheckInRequest request) {
+        try {
+            User currentUser = authenticationService.getCurrentUser();
+            AttendanceRecord record = attendanceService.manualCheckIn(
+                currentUser, 
+                request.getLatitude(), 
+                request.getLongitude(), 
+                request.getAccuracy()
+            );
+            return ResponseEntity.ok(record);
+        } catch (RuntimeException e) {
+            log.error("Check-in failed: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(Map.of("error", e.getMessage(), "message", e.getMessage()));
+        }
     }
     
     /**
@@ -96,14 +116,37 @@ public class AttendanceController {
      */
     @PostMapping("/check-out")
     @PreAuthorize("hasAnyRole('EMPLOYEE', 'MANAGER', 'ADMIN')")
-    public ResponseEntity<AttendanceRecord> checkOut(
-        @RequestParam Double latitude,
-        @RequestParam Double longitude,
-        @RequestParam(required = false) Float accuracy
-    ) {
-        User currentUser = authenticationService.getCurrentUser();
-        AttendanceRecord record = attendanceService.manualCheckOut(currentUser, latitude, longitude, accuracy);
-        return ResponseEntity.ok(record);
+    public ResponseEntity<?> checkOut(@RequestBody CheckInRequest request) {
+        try {
+            User currentUser = authenticationService.getCurrentUser();
+            AttendanceRecord record = attendanceService.manualCheckOut(
+                currentUser, 
+                request.getLatitude(), 
+                request.getLongitude(), 
+                request.getAccuracy()
+            );
+            return ResponseEntity.ok(record);
+        } catch (RuntimeException e) {
+            log.error("Check-out failed: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(Map.of("error", e.getMessage(), "message", e.getMessage()));
+        }
+    }
+    
+    // Request DTOs
+    public static class CheckInRequest {
+        private Double latitude;
+        private Double longitude;
+        private Float accuracy;
+        
+        public Double getLatitude() { return latitude; }
+        public void setLatitude(Double latitude) { this.latitude = latitude; }
+        
+        public Double getLongitude() { return longitude; }
+        public void setLongitude(Double longitude) { this.longitude = longitude; }
+        
+        public Float getAccuracy() { return accuracy; }
+        public void setAccuracy(Float accuracy) { this.accuracy = accuracy; }
     }
     
     /**

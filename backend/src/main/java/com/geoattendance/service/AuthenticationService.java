@@ -2,7 +2,6 @@ package com.geoattendance.service;
 
 import com.geoattendance.entity.User;
 import com.geoattendance.repository.UserRepository;
-import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -13,10 +12,14 @@ import org.springframework.stereotype.Service;
  * the currently authenticated User entity.
  */
 @Service
-@RequiredArgsConstructor
 public class AuthenticationService {
 
     private final UserRepository userRepository;
+
+    // Explicit constructor (replaces Lombok @RequiredArgsConstructor)
+    public AuthenticationService(UserRepository userRepository) {
+        this.userRepository = userRepository;
+    }
 
     /**
      * Return the currently authenticated full User entity.

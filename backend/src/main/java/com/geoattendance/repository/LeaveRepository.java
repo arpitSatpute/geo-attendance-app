@@ -12,6 +12,8 @@ public interface LeaveRepository extends MongoRepository<Leave, String> {
     
     List<Leave> findByUserId(String userId);
     
+    List<Leave> findByStatus(Leave.LeaveStatus status);
+    
     List<Leave> findByUserIdAndStatus(String userId, Leave.LeaveStatus status);
     
     List<Leave> findByStartDateBetween(LocalDate startDate, LocalDate endDate);

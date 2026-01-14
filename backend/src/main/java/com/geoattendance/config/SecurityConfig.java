@@ -12,6 +12,7 @@ import org.springframework.security.config.annotation.authentication.configurati
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configuration.WebSecurityCustomizer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -27,7 +28,7 @@ import java.util.List;
 
 @Configuration
 @EnableWebSecurity
-@EnableMethodSecurity
+@EnableMethodSecurity(jsr250Enabled = true)
 public class SecurityConfig {
 
     @Autowired
@@ -63,12 +64,18 @@ public class SecurityConfig {
         configuration.setAllowedOriginPatterns(List.of("*"));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         configuration.setAllowedHeaders(Arrays.asList("*"));
-        configuration.setAllowCredentials(true);
+        configuration.setAllowCredentials(false); // Set to false to work with * origin pattern
         configuration.setMaxAge(3600L);
         
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
         return source;
+    }
+
+    @Bean
+    public WebSecurityCustomizer webSecurityCustomizer() {
+        // Completely bypass Spring Security filters for auth endpoints, debug endpoints, and docs
+        return (web) -> web.ignoring().requestMatchers("/api/auth/**", "/auth/**", "/auth/debug/**", "/debug/**", "/public/**", "/swagger-ui/**", "/v3/api-docs/**", "/error", "/error/**");
     }
 
     @Bean
@@ -81,9 +88,13 @@ public class SecurityConfig {
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/**", "/auth/**").permitAll()
+                        // Public authentication endpoints (login, register, logout, etc.)
+                        .requestMatchers("/api/auth/**", "/auth/**", "/auth/debug/**", "/debug/**", "/public/**", "/error", "/error/**").permitAll()
+                        // Swagger/OpenAPI documentation endpoints
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
+                        // Allow OPTIONS requests for CORS
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                        // All other endpoints require authentication
                         .anyRequest().authenticated()
                 );
 

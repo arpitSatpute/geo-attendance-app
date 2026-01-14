@@ -1,0 +1,4 @@
+com.geoattendance:geo-attendance-backend:jar:1.0.0
++- io.jsonwebtoken:jjwt-api:jar:0.12.3:compile
++- io.jsonwebtoken:jjwt-impl:jar:0.12.3:runtime
+\- io.jsonwebtoken:jjwt-jackson:jar:0.12.3:runtime

@@ -2,8 +2,8 @@ package com.geoattendance.service;
 
 import com.geoattendance.entity.Geofence;
 import com.geoattendance.entity.User;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
@@ -16,14 +16,18 @@ import java.util.Set;
 import java.util.concurrent.CopyOnWriteArraySet;
 
 @Service
-@RequiredArgsConstructor
-@Slf4j
 public class NotificationService {
-    
+
+    private static final Logger log = LoggerFactory.getLogger(NotificationService.class);
+
     private final JavaMailSender mailSender;
     private static final Set<WebSocketSession> sessions = new CopyOnWriteArraySet<>();
     private static final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-    
+
+    public NotificationService(JavaMailSender mailSender) {
+        this.mailSender = mailSender;
+    }
+
     /**
      * Send check-in notification
      */
@@ -34,9 +38,9 @@ public class NotificationService {
             geofence.getName(),
             LocalDateTime.now().format(formatter)
         );
-        
+
         broadcastNotification("CHECK_IN", message, user.getId());
-        
+
         // Send email to manager if exists
         if (user.getManager() != null) {
             sendEmailNotification(
@@ -46,7 +50,7 @@ public class NotificationService {
             );
         }
     }
-    
+
     /**
      * Send check-out notification
      */
@@ -56,9 +60,9 @@ public class NotificationService {
             user.getFirstName() + " " + user.getLastName(),
             LocalDateTime.now().format(formatter)
         );
-        
+
         broadcastNotification("CHECK_OUT", message, user.getId());
-        
+
         // Send email to manager if exists
         if (user.getManager() != null) {
             sendEmailNotification(
@@ -68,7 +72,7 @@ public class NotificationService {
             );
         }
     }
-    
+
     /**
      * Send late arrival notification
      */
@@ -78,9 +82,9 @@ public class NotificationService {
             user.getFirstName() + " " + user.getLastName(),
             LocalDateTime.now().format(formatter)
         );
-        
+
         broadcastNotification("LATE_ARRIVAL", message, user.getId());
-        
+
         // Send email to manager
         if (user.getManager() != null) {
             sendEmailNotification(
@@ -90,7 +94,7 @@ public class NotificationService {
             );
         }
     }
-    
+
     /**
      * Send geofence violation notification
      */
@@ -101,9 +105,9 @@ public class NotificationService {
             geofence.getName(),
             LocalDateTime.now().format(formatter)
         );
-        
+
         broadcastNotification("GEOFENCE_VIOLATION", message, user.getId());
-        
+
         // Send email to manager and admin
         if (user.getManager() != null) {
             sendEmailNotification(
@@ -113,7 +117,7 @@ public class NotificationService {
             );
         }
     }
-    
+
     /**
      * Send leave approval notification
      */
@@ -123,16 +127,16 @@ public class NotificationService {
             "Your leave request has been %s",
             status
         );
-        
+
         broadcastNotification("LEAVE_APPROVAL", message, user.getId());
-        
+
         sendEmailNotification(
             user.getEmail(),
             "Leave Request " + (approved ? "Approved" : "Rejected"),
             message
         );
     }
-    
+
     /**
      * Broadcast notification via WebSocket
      */
@@ -141,7 +145,7 @@ public class NotificationService {
             "{\"type\":\"%s\",\"message\":\"%s\",\"userId\":\"%s\",\"timestamp\":\"%s\"}",
             type, message, userId, LocalDateTime.now().format(formatter)
         );
-        
+
         for (WebSocketSession session : sessions) {
             try {
                 if (session.isOpen()) {
@@ -152,7 +156,7 @@ public class NotificationService {
             }
         }
     }
-    
+
     /**
      * Send email notification
      */
@@ -163,14 +167,14 @@ public class NotificationService {
             message.setSubject(subject);
             message.setText(body);
             message.setFrom("noreply@geoattendance.com");
-            
+
             mailSender.send(message);
             log.info("Email sent to {} with subject: {}", to, subject);
         } catch (Exception e) {
             log.error("Error sending email to {}", to, e);
         }
     }
-    
+
     /**
      * Register WebSocket session
      */
@@ -178,7 +182,7 @@ public class NotificationService {
         sessions.add(session);
         log.info("WebSocket session registered. Total sessions: {}", sessions.size());
     }
-    
+
     /**
      * Unregister WebSocket session
      */
@@ -186,7 +190,7 @@ public class NotificationService {
         sessions.remove(session);
         log.info("WebSocket session unregistered. Total sessions: {}", sessions.size());
     }
-    
+
     /**
      * Send bulk notification to team
      */

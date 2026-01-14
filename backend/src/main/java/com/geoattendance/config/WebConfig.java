@@ -26,7 +26,8 @@ public class WebConfig implements WebMvcConfigurer {
                 .allowedOriginPatterns("*") // Allow all origins for mobile app
                 .allowedMethods(allowedMethods)
                 .allowedHeaders("*")
-                .allowCredentials(true)
+                // When using wildcard origin patterns, do not allow credentials (browsers won't accept Access-Control-Allow-Origin: *)
+                .allowCredentials(false)
                 .maxAge(3600);
     }
 }
