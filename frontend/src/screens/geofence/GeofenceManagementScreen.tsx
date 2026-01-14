@@ -61,7 +61,17 @@ const GeofenceManagementScreen = () => {
     try {
       setLoading(true);
       const response = await ApiService.get('/geofences').catch(() => ({ data: [] }));
-      setGeofences(response.data || []);
+      // Map backend field names to frontend interface
+      const mappedGeofences = (response.data || []).map((geo: any) => ({
+        id: geo.id,
+        name: geo.name,
+        latitude: geo.latitude,
+        longitude: geo.longitude,
+        radius: geo.radiusMeters || geo.radius || 100,
+        description: geo.description,
+        active: geo.isActive !== undefined ? geo.isActive : geo.active,
+      }));
+      setGeofences(mappedGeofences);
     } catch (error) {
       console.error('Error loading geofences:', error);
     } finally {
@@ -71,8 +81,8 @@ const GeofenceManagementScreen = () => {
 
   const handleAddNew = () => {
     setEditingGeofence(null);
-    const lat = currentLocation?.coords.latitude.toString() || '';
-    const lng = currentLocation?.coords.longitude.toString() || '';
+    const lat = currentLocation?.coords?.latitude?.toString() || '';
+    const lng = currentLocation?.coords?.longitude?.toString() || '';
     setFormData({
       name: '',
       latitude: lat,
@@ -86,10 +96,10 @@ const GeofenceManagementScreen = () => {
   const handleEdit = (geofence: Geofence) => {
     setEditingGeofence(geofence);
     setFormData({
-      name: geofence.name,
-      latitude: geofence.latitude.toString(),
-      longitude: geofence.longitude.toString(),
-      radius: geofence.radius.toString(),
+      name: geofence.name || '',
+      latitude: geofence.latitude?.toString() || '',
+      longitude: geofence.longitude?.toString() || '',
+      radius: geofence.radius?.toString() || '100',
       description: geofence.description || '',
     });
     setModalVisible(true);
@@ -106,22 +116,52 @@ const GeofenceManagementScreen = () => {
         name: formData.name,
         latitude: parseFloat(formData.latitude),
         longitude: parseFloat(formData.longitude),
-        radius: parseFloat(formData.radius),
-        description: formData.description,
-        active: true,
+        radiusMeters: parseFloat(formData.radius),
+        description: formData.description || '',
+        isActive: editingGeofence ? editingGeofence.active : true,
+        geofenceType: 'CIRCLE',
       };
+
+      console.log('Saving geofence data:', geofenceData);
 
       if (editingGeofence) {
         await ApiService.put(`/geofences/${editingGeofence.id}`, geofenceData);
       } else {
-        await ApiService.post('/geofences', geofenceData);
+        const response = await ApiService.post('/geofences', geofenceData);
+        console.log('Create geofence response:', response);
       }
 
       Alert.alert('Success', `Geofence ${editingGeofence ? 'updated' : 'created'} successfully`);
       setModalVisible(false);
       loadGeofences();
-    } catch (error) {
-      Alert.alert('Error', 'Failed to save geofence');
+    } catch (error: any) {
+      console.error('Save geofence error:', error);
+      console.error('Error response:', error?.response?.data);
+      Alert.alert('Error', error?.response?.data?.message || 'Failed to save geofence');
+    }
+  };
+
+  const handleToggleActive = async (geofence: Geofence) => {
+    try {
+      const updatedData = {
+        name: geofence.name,
+        latitude: geofence.latitude,
+        longitude: geofence.longitude,
+        radiusMeters: geofence.radius,
+        description: geofence.description || '',
+        isActive: !geofence.active,
+        geofenceType: 'CIRCLE',
+      };
+      
+      console.log('Toggling geofence:', geofence.id, 'to active:', updatedData.isActive);
+      const response = await ApiService.put(`/geofences/${geofence.id}`, updatedData);
+      console.log('Toggle response:', response);
+      
+      Alert.alert('Success', `Geofence ${updatedData.isActive ? 'activated' : 'deactivated'} successfully`);
+      await loadGeofences();
+    } catch (error: any) {
+      console.error('Toggle active error:', error);
+      Alert.alert('Error', error?.response?.data?.message || 'Failed to update geofence status');
     }
   };
 
@@ -212,17 +252,26 @@ const GeofenceManagementScreen = () => {
 
               <View style={styles.cardActions}>
                 <TouchableOpacity 
-                  style={styles.editButton} 
-                  onPress={() => handleEdit(geofence)}
+                  style={[styles.actionButton, geofence.active ? styles.deactivateButton : styles.activateButton]} 
+                  onPress={() => handleToggleActive(geofence)}
                 >
-                  <Text style={styles.editButtonText}>✏️ Edit</Text>
+                  <Text style={styles.actionButtonText}>
+                    {geofence.active ? '⏸️ Deactivate' : '▶️ Activate'}
+                  </Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity 
-                  style={styles.deleteButton} 
+                  style={[styles.actionButton, styles.editButton]} 
+                  onPress={() => handleEdit(geofence)}
+                >
+                  <Text style={styles.actionButtonText}>✏️ Edit</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity 
+                  style={[styles.actionButton, styles.deleteButton]} 
                   onPress={() => handleDelete(geofence)}
                 >
-                  <Text style={styles.deleteButtonText}>🗑️ Delete</Text>
+                  <Text style={styles.actionButtonText}>🗑️ Delete</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -385,16 +434,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderBottomWidth: 1,
     borderBottomColor: '#e0e0e0',
+    flexWrap: 'wrap',
   },
   title: {
     fontSize: 24,
     fontWeight: 'bold',
     color: '#000',
+    marginBottom: 4,
   },
   subtitle: {
     fontSize: 14,
     color: '#666',
-    marginTop: 4,
+    marginTop: 2,
   },
   addButton: {
     backgroundColor: '#000',
@@ -409,12 +460,14 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    padding: 20,
+    paddingHorizontal: 15,
+    paddingVertical: 10,
   },
   emptyState: {
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 60,
+    paddingHorizontal: 20,
   },
   emptyIcon: {
     fontSize: 60,
@@ -434,7 +487,7 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: '#fff',
     borderRadius: 12,
-    padding: 20,
+    padding: 16,
     marginBottom: 15,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -447,10 +500,12 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'flex-start',
     marginBottom: 15,
+    flexWrap: 'wrap',
   },
   cardHeaderLeft: {
     flex: 1,
     marginRight: 10,
+    minWidth: 150,
   },
   cardTitle: {
     fontSize: 18,
@@ -486,56 +541,67 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginBottom: 8,
+    flexWrap: 'wrap',
   },
   infoLabel: {
     fontSize: 14,
     color: '#666',
+    minWidth: 80,
   },
   infoValue: {
     fontSize: 14,
     color: '#333',
     fontWeight: '500',
+    flex: 1,
+    textAlign: 'right',
   },
   cardActions: {
     flexDirection: 'row',
-    gap: 10,
+    flexWrap: 'wrap',
+    marginHorizontal: -5,
+    marginTop: 5,
+  },
+  actionButton: {
+    minWidth: '30%',
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    marginHorizontal: 5,
+    marginBottom: 10,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  actionButtonText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  activateButton: {
+    backgroundColor: '#4CAF50',
+  },
+  deactivateButton: {
+    backgroundColor: '#FF9800',
   },
   editButton: {
-    flex: 1,
     backgroundColor: '#007AFF',
-    padding: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  editButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
   },
   deleteButton: {
-    flex: 1,
     backgroundColor: '#FF3B30',
-    padding: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  deleteButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
   },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'center',
     alignItems: 'center',
+    padding: 20,
   },
   modalContent: {
     backgroundColor: '#fff',
     borderRadius: 15,
     padding: 20,
-    width: '90%',
-    maxHeight: '80%',
+    width: '100%',
+    maxWidth: 500,
+    maxHeight: '85%',
   },
   mapPreviewContainer: {
     marginBottom: 20,
@@ -589,12 +655,14 @@ const styles = StyleSheet.create({
   },
   modalActions: {
     flexDirection: 'row',
-    gap: 10,
     marginTop: 20,
+    marginHorizontal: -5,
   },
   cancelButton: {
     flex: 1,
-    padding: 15,
+    paddingVertical: 15,
+    paddingHorizontal: 12,
+    marginHorizontal: 5,
     borderRadius: 8,
     backgroundColor: '#f5f5f5',
     alignItems: 'center',
@@ -606,7 +674,9 @@ const styles = StyleSheet.create({
   },
   saveButton: {
     flex: 1,
-    padding: 15,
+    paddingVertical: 15,
+    paddingHorizontal: 12,
+    marginHorizontal: 5,
     borderRadius: 8,
     backgroundColor: '#000',
     alignItems: 'center',

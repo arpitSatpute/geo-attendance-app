@@ -5,6 +5,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Provider } from 'react-redux';
 import { store } from './src/store';
 import * as Location from 'expo-location';
+import { Ionicons } from '@expo/vector-icons';
 
 // Import screens
 import LoginScreen from './src/screens/auth/LoginScreen';
@@ -45,12 +46,16 @@ const AuthStack = () => {
 };
 
 import LeaveApplicationScreen from './src/screens/employee/LeaveApplicationScreen';
+import LeaveHistoryScreen from './src/screens/employee/LeaveHistoryScreen';
+import EmployeeSalaryScreen from './src/screens/employee/EmployeeSalaryScreen';
 // Employee Stack Navigator
 const EmployeeStack = () => {
   return (
     <Stack.Navigator>
       <Stack.Screen name="EmployeeTabs" component={EmployeeTabNavigator} options={{ headerShown: false }} />
       <Stack.Screen name="LeaveApplication" component={LeaveApplicationScreen} options={{ headerTitle: 'Apply for Leave' }} />
+      <Stack.Screen name="LeaveHistory" component={LeaveHistoryScreen} options={{ headerTitle: 'Leave History' }} />
+      <Stack.Screen name="EmployeeSalary" component={EmployeeSalaryScreen} options={{ headerTitle: 'My Salary' }} />
       <Stack.Screen name="Reports" component={ReportsScreen} options={{ headerTitle: 'Reports' }} />
       <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} options={{ headerTitle: 'Change Password' }} />
       <Stack.Screen name="NotificationSettings" component={NotificationSettingsScreen} options={{ headerTitle: 'Notifications' }} />
@@ -79,6 +84,9 @@ const EmployeeTabNavigator = () => {
         options={{
           tabBarLabel: 'Dashboard',
           headerTitle: 'GeoAttendance Pro',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="home-outline" size={size} color={color} />
+          ),
         }}
       />
       <Tab.Screen
@@ -87,6 +95,9 @@ const EmployeeTabNavigator = () => {
         options={{
           tabBarLabel: 'Location',
           headerTitle: 'My Location',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="location-outline" size={size} color={color} />
+          ),
         }}
       />
       <Tab.Screen
@@ -95,6 +106,9 @@ const EmployeeTabNavigator = () => {
         options={{
           tabBarLabel: 'History',
           headerTitle: 'Attendance History',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="time-outline" size={size} color={color} />
+          ),
         }}
       />
       <Tab.Screen
@@ -103,6 +117,9 @@ const EmployeeTabNavigator = () => {
         options={{
           tabBarLabel: 'Profile',
           headerTitle: 'My Profile',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="person-outline" size={size} color={color} />
+          ),
         }}
       />
     </Tab.Navigator>
@@ -148,6 +165,9 @@ const ManagerTabNavigator = () => {
         options={{
           tabBarLabel: 'Dashboard',
           headerTitle: 'Team Overview',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="grid-outline" size={size} color={color} />
+          ),
         }}
       />
       <Tab.Screen
@@ -156,6 +176,9 @@ const ManagerTabNavigator = () => {
         options={{
           tabBarLabel: 'Teams',
           headerTitle: 'Team Management',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="people-outline" size={size} color={color} />
+          ),
         }}
       />
       <Tab.Screen
@@ -164,6 +187,9 @@ const ManagerTabNavigator = () => {
         options={{
           tabBarLabel: 'Team Map',
           headerTitle: 'Team Locations',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="map-outline" size={size} color={color} />
+          ),
         }}
       />
       <Tab.Screen
@@ -172,6 +198,9 @@ const ManagerTabNavigator = () => {
         options={{
           tabBarLabel: 'Geofences',
           headerTitle: 'Manage Geofences',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="radio-button-on-outline" size={size} color={color} />
+          ),
         }}
       />
       <Tab.Screen
@@ -180,6 +209,9 @@ const ManagerTabNavigator = () => {
         options={{
           tabBarLabel: 'Profile',
           headerTitle: 'My Profile',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="person-outline" size={size} color={color} />
+          ),
         }}
       />
     </Tab.Navigator>
@@ -220,6 +252,9 @@ const AdminTabNavigator = () => {
         options={{
           tabBarLabel: 'Dashboard',
           headerTitle: 'System Overview',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="speedometer-outline" size={size} color={color} />
+          ),
         }}
       />
       <Tab.Screen
@@ -228,6 +263,9 @@ const AdminTabNavigator = () => {
         options={{
           tabBarLabel: 'Geofences',
           headerTitle: 'Manage Geofences',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="radio-button-on-outline" size={size} color={color} />
+          ),
         }}
       />
       <Tab.Screen
@@ -236,6 +274,9 @@ const AdminTabNavigator = () => {
         options={{
           tabBarLabel: 'Users',
           headerTitle: 'User Management',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="people-outline" size={size} color={color} />
+          ),
         }}
       />
       <Tab.Screen
@@ -244,6 +285,9 @@ const AdminTabNavigator = () => {
         options={{
           tabBarLabel: 'Profile',
           headerTitle: 'My Profile',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="person-outline" size={size} color={color} />
+          ),
         }}
       />
     </Tab.Navigator>

@@ -152,16 +152,22 @@ const TeamManagementScreen = () => {
               <Text style={styles.teamName}>{team.name}</Text>
               <Text style={styles.teamInfo}>Employees: {team.employeeIds ? team.employeeIds.length : 0}</Text>
               <Text style={styles.teamInfo}>Geofence: {team.geofenceId ? team.geofenceId : 'Not set'}</Text>
-              <View style={{ flexDirection: 'row', gap: 10 }}>
-                <TouchableOpacity style={styles.addEmpButton} onPress={() => setAddEmployeeModal({ open: true, teamId: team.id })}>
-                  <Text style={styles.addEmpButtonText}>+ Add Employee</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.showEmpButton} onPress={() => handleShowEmployees(team.id)}>
-                  <Text style={styles.showEmpButtonText}>View Employees</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.setGeofenceButton} onPress={() => handleShowGeofenceModal(team.id)}>
-                  <Text style={styles.setGeofenceButtonText}>Set Geofence</Text>
-                </TouchableOpacity>
+              <View style={styles.actionsGrid}>
+                <View style={styles.actionButtonWrapper}>
+                  <TouchableOpacity style={styles.addEmpButton} onPress={() => setAddEmployeeModal({ open: true, teamId: team.id })}>
+                    <Text style={styles.addEmpButtonText}>+ Add Employee</Text>
+                  </TouchableOpacity>
+                </View>
+                <View style={styles.actionButtonWrapper}>
+                  <TouchableOpacity style={styles.showEmpButton} onPress={() => handleShowEmployees(team.id)}>
+                    <Text style={styles.showEmpButtonText}>View Employees</Text>
+                  </TouchableOpacity>
+                </View>
+                <View style={styles.actionButtonWrapper}>
+                  <TouchableOpacity style={styles.setGeofenceButton} onPress={() => handleShowGeofenceModal(team.id)}>
+                    <Text style={styles.setGeofenceButtonText}>Set Geofence</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
             </View>
           ))
@@ -283,38 +289,40 @@ const TeamManagementScreen = () => {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f5f5f5' },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20 },
-  title: { fontSize: 24, fontWeight: 'bold', color: '#000' },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, flexWrap: 'wrap' },
+  title: { fontSize: 24, fontWeight: 'bold', color: '#000', marginBottom: 10 },
   addButton: { backgroundColor: '#000', paddingHorizontal: 20, paddingVertical: 12, borderRadius: 8 },
   addButtonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
-  content: { flex: 1, padding: 20 },
+  content: { flex: 1, paddingHorizontal: 15, paddingVertical: 10 },
   emptyText: { textAlign: 'center', color: '#999', marginTop: 40 },
-  teamCard: { backgroundColor: '#fff', borderRadius: 10, padding: 20, marginBottom: 15, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 4, elevation: 2 },
-  teamName: { fontSize: 18, fontWeight: 'bold', color: '#333', marginBottom: 5 },
-  teamInfo: { fontSize: 14, color: '#666', marginBottom: 2 },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.3)', justifyContent: 'center', alignItems: 'center' },
-  modalContent: { backgroundColor: '#fff', borderRadius: 12, padding: 30, width: 320 },
+  teamCard: { backgroundColor: '#fff', borderRadius: 10, padding: 16, marginBottom: 15, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 4, elevation: 2 },
+  teamName: { fontSize: 18, fontWeight: 'bold', color: '#333', marginBottom: 8 },
+  teamInfo: { fontSize: 14, color: '#666', marginBottom: 4 },
+  actionsGrid: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 12, marginHorizontal: -5 },
+  actionButtonWrapper: { width: '33.33%', paddingHorizontal: 5, marginBottom: 10, minWidth: 100 },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.3)', justifyContent: 'center', alignItems: 'center', padding: 20 },
+  modalContent: { backgroundColor: '#fff', borderRadius: 12, padding: 30, width: '100%', maxWidth: 400 },
   modalTitle: { fontSize: 20, fontWeight: 'bold', marginBottom: 20, color: '#000' },
   input: { borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 12, marginBottom: 20, fontSize: 16 },
-  modalActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 10 },
-  cancelButton: { padding: 12, borderRadius: 8, backgroundColor: '#f5f5f5', alignItems: 'center' },
+  modalActions: { flexDirection: 'row', justifyContent: 'flex-end', marginHorizontal: -5 },
+  cancelButton: { padding: 12, paddingHorizontal: 16, marginHorizontal: 5, borderRadius: 8, backgroundColor: '#f5f5f5', alignItems: 'center' },
   cancelButtonText: { fontSize: 16, fontWeight: '600', color: '#666' },
-  saveButton: { padding: 12, borderRadius: 8, backgroundColor: '#000', alignItems: 'center' },
+  saveButton: { padding: 12, paddingHorizontal: 16, marginHorizontal: 5, borderRadius: 8, backgroundColor: '#000', alignItems: 'center' },
   saveButtonText: { fontSize: 16, fontWeight: '600', color: '#fff' },
-  addEmpButton: { marginTop: 10, backgroundColor: '#2196F3', borderRadius: 6, padding: 10, alignItems: 'center' },
-  addEmpButtonText: { color: '#fff', fontWeight: '600', fontSize: 15 },
-  showEmpButton: { marginTop: 10, backgroundColor: '#4CAF50', borderRadius: 6, padding: 10, alignItems: 'center' },
-  showEmpButtonText: { color: '#fff', fontWeight: '600', fontSize: 15 },
-  setGeofenceButton: { marginTop: 10, backgroundColor: '#673AB7', borderRadius: 6, padding: 10, alignItems: 'center' },
-  setGeofenceButtonText: { color: '#fff', fontWeight: '600', fontSize: 15 },
-  employeeRow: { borderBottomWidth: 1, borderBottomColor: '#eee', paddingVertical: 8 },
-  employeeName: { fontSize: 16, fontWeight: '500', color: '#222' },
-  employeeEmail: { fontSize: 13, color: '#666' },
-  removeEmpButton: { marginTop: 4, backgroundColor: '#F44336', borderRadius: 6, padding: 6, alignItems: 'center', alignSelf: 'flex-start' },
+  addEmpButton: { backgroundColor: '#2196F3', borderRadius: 6, paddingVertical: 10, paddingHorizontal: 8, alignItems: 'center', width: '100%' },
+  addEmpButtonText: { color: '#fff', fontWeight: '600', fontSize: 13 },
+  showEmpButton: { backgroundColor: '#4CAF50', borderRadius: 6, paddingVertical: 10, paddingHorizontal: 8, alignItems: 'center', width: '100%' },
+  showEmpButtonText: { color: '#fff', fontWeight: '600', fontSize: 13 },
+  setGeofenceButton: { backgroundColor: '#673AB7', borderRadius: 6, paddingVertical: 10, paddingHorizontal: 8, alignItems: 'center', width: '100%' },
+  setGeofenceButtonText: { color: '#fff', fontWeight: '600', fontSize: 13 },
+  employeeRow: { borderBottomWidth: 1, borderBottomColor: '#eee', paddingVertical: 10, paddingHorizontal: 5 },
+  employeeName: { fontSize: 16, fontWeight: '500', color: '#222', marginBottom: 2 },
+  employeeEmail: { fontSize: 13, color: '#666', marginBottom: 6 },
+  removeEmpButton: { backgroundColor: '#F44336', borderRadius: 6, paddingVertical: 6, paddingHorizontal: 12, alignItems: 'center', alignSelf: 'flex-start' },
   removeEmpButtonText: { color: '#fff', fontWeight: '600', fontSize: 13 },
-  geofenceRow: { borderBottomWidth: 1, borderBottomColor: '#eee', paddingVertical: 10, paddingHorizontal: 5 },
-  selectedGeofence: { borderBottomWidth: 1, borderBottomColor: '#673AB7', backgroundColor: '#ede7f6', paddingVertical: 10, paddingHorizontal: 5 },
-  geofenceName: { fontSize: 16, fontWeight: '500', color: '#222' },
+  geofenceRow: { borderBottomWidth: 1, borderBottomColor: '#eee', paddingVertical: 12, paddingHorizontal: 8 },
+  selectedGeofence: { borderWidth: 2, borderColor: '#673AB7', backgroundColor: '#ede7f6', paddingVertical: 12, paddingHorizontal: 8, borderRadius: 6, marginBottom: 8 },
+  geofenceName: { fontSize: 16, fontWeight: '500', color: '#222', marginBottom: 2 },
   geofenceDesc: { fontSize: 13, color: '#666' },
 });
 

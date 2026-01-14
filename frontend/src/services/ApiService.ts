@@ -154,6 +154,18 @@ class ApiServiceClass {
     return response.data;
   }
 
+  async getTeamAttendance(startDate: string, endDate: string) {
+    const response = await this.api.get('/attendance/team', {
+      params: { startDate, endDate },
+    });
+    return response.data;
+  }
+
+  async getTeamCurrentStatus() {
+    const response = await this.api.get('/attendance/team/status');
+    return response.data;
+  }
+
   /**
    * Geofence endpoints
    */

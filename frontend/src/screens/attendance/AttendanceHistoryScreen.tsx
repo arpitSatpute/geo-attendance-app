@@ -177,11 +177,21 @@ const AttendanceHistoryScreen = () => {
                   <View style={styles.timeItem}>
                     <Text style={styles.timeLabel}>Check In</Text>
                     <Text style={styles.timeValue}>{formatTime(record.checkInTime)}</Text>
+                    {record.checkInTime && (
+                      <Text style={styles.timeSubtext}>
+                        {new Date(record.checkInTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+                      </Text>
+                    )}
                   </View>
                   <View style={styles.timeDivider} />
                   <View style={styles.timeItem}>
                     <Text style={styles.timeLabel}>Check Out</Text>
                     <Text style={styles.timeValue}>{formatTime(record.checkOutTime)}</Text>
+                    {record.checkOutTime && (
+                      <Text style={styles.timeSubtext}>
+                        {new Date(record.checkOutTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+                      </Text>
+                    )}
                   </View>
                 </View>
                 
@@ -191,6 +201,19 @@ const AttendanceHistoryScreen = () => {
                     {calculateDuration(record.checkInTime, record.checkOutTime)}
                   </Text>
                 </View>
+                
+                {(record.checkInLatitude || record.status) && (
+                  <View style={styles.recordDetails}>
+                    {record.status && (
+                      <Text style={styles.detailText}>Status: {record.status}</Text>
+                    )}
+                    {record.checkInLatitude && record.checkInLongitude && (
+                      <Text style={styles.detailText}>
+                        Location: {record.checkInLatitude.toFixed(4)}, {record.checkInLongitude.toFixed(4)}
+                      </Text>
+                    )}
+                  </View>
+                )}
               </View>
             </View>
           ))
@@ -328,6 +351,22 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     color: '#333',
+  },
+  timeSubtext: {
+    fontSize: 11,
+    color: '#999',
+    marginTop: 4,
+  },
+  recordDetails: {
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#f0f0f0',
+  },
+  detailText: {
+    fontSize: 12,
+    color: '#666',
+    marginBottom: 4,
   },
   durationContainer: {
     backgroundColor: '#f5f5f5',

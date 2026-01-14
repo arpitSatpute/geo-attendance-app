@@ -1,5 +1,4 @@
-import { createStore, applyMiddleware, combineReducers } from 'redux';
-import thunk from 'redux-thunk';
+import { configureStore, createSlice } from '@reduxjs/toolkit';
 
 // Initial state
 const initialAuthState = {
@@ -10,45 +9,47 @@ const initialAuthState = {
   error: null,
 };
 
-// Auth reducer
-const authReducer = (state = initialAuthState, action: any) => {
-  switch (action.type) {
-    case 'LOGIN_SUCCESS':
-      return {
-        ...state,
-        isAuthenticated: true,
-        user: action.payload.user,
-        token: action.payload.token,
-        loading: false,
-        error: null,
-      };
-    case 'LOGIN_FAIL':
-      return {
-        ...state,
-        isAuthenticated: false,
-        user: null,
-        token: null,
-        loading: false,
-        error: action.payload,
-      };
-    case 'LOGOUT':
-      return initialAuthState;
-    case 'SET_LOADING':
-      return {
-        ...state,
-        loading: action.payload,
-      };
-    default:
-      return state;
-  }
-};
-
-// Root reducer
-const rootReducer = combineReducers({
-  auth: authReducer,
+// Auth slice (modern Redux Toolkit approach)
+const authSlice = createSlice({
+  name: 'auth',
+  initialState: initialAuthState,
+  reducers: {
+    loginSuccess: (state, action) => {
+      state.isAuthenticated = true;
+      state.user = action.payload.user;
+      state.token = action.payload.token;
+      state.loading = false;
+      state.error = null;
+    },
+    loginFail: (state, action) => {
+      state.isAuthenticated = false;
+      state.user = null;
+      state.token = null;
+      state.loading = false;
+      state.error = action.payload;
+    },
+    logout: (state) => {
+      state.user = null;
+      state.token = null;
+      state.isAuthenticated = false;
+      state.loading = false;
+      state.error = null;
+    },
+    setLoading: (state, action) => {
+      state.loading = action.payload;
+    },
+  },
 });
 
-// Create store
-export const store = createStore(rootReducer, applyMiddleware(thunk));
+// Export actions
+export const { loginSuccess, loginFail, logout, setLoading } = authSlice.actions;
 
-export type RootState = ReturnType<typeof rootReducer>;
+// Create store with configureStore (Redux Toolkit 2.x)
+export const store = configureStore({
+  reducer: {
+    auth: authSlice.reducer,
+  },
+});
+
+export type RootState = ReturnType<typeof store.getState>;
+export type AppDispatch = typeof store.dispatch;

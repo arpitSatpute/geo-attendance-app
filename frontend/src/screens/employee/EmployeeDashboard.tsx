@@ -13,11 +13,13 @@ import {
 import * as Location from 'expo-location';
 import { AuthService } from '../../services/AuthService';
 import { AttendanceService } from '../../services/AttendanceService';
+import { ApiService } from '../../services/ApiService';
 
 const EmployeeDashboard = () => {
   const navigation = useNavigation<any>();
   const [user, setUser] = useState<any>(null);
   const [todayAttendance, setTodayAttendance] = useState<any>(null);
+  const [monthlyStats, setMonthlyStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -53,16 +55,33 @@ const EmployeeDashboard = () => {
         return;
       }
 
-      const [userData, attendance] = await Promise.all([
-        AuthService.getCurrentUser(),
+      // Calculate date range for monthly stats
+      const now = new Date();
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+      const startDate = startOfMonth.toISOString().split('T')[0];
+      const endDate = endOfMonth.toISOString().split('T')[0];
+
+      // Fetch fresh user data from API (not from cache)
+      const [userDataFromApi, attendance, stats] = await Promise.all([
+        ApiService.getCurrentUser(),
         AttendanceService.getTodayAttendance().catch((err) => {
           console.log('No attendance record for today:', err.message);
           return null;
         }),
+        AttendanceService.getStatistics(startDate, endDate).catch((err) => {
+          console.log('No stats available:', err.message);
+          return null;
+        }),
       ]);
       
-      setUser(userData);
+      console.log('Loaded user:', userDataFromApi?.name);
+      console.log('Loaded attendance:', JSON.stringify(attendance, null, 2));
+      console.log('Loaded stats:', JSON.stringify(stats, null, 2));
+      
+      setUser(userDataFromApi);
       setTodayAttendance(attendance);
+      setMonthlyStats(stats);
     } catch (error: any) {
       console.error('Error loading data:', error);
       if (error.response?.status === 401) {
@@ -109,17 +128,32 @@ const EmployeeDashboard = () => {
         return;
       }
 
+      console.log('Calling check-in API...');
       const result = await AttendanceService.checkIn(
         location.coords.latitude,
         location.coords.longitude,
         location.coords.accuracy
       );
 
+      console.log('Check-in result:', JSON.stringify(result, null, 2));
+      
+      // Immediately update the state with the new check-in data
+      if (result) {
+        console.log('Updating todayAttendance state with:', result);
+        setTodayAttendance(result);
+      }
+      
       Alert.alert('Success', 'Checked in successfully!');
+      // Reload data to ensure everything is in sync
+      console.log('Reloading data...');
       await loadData();
     } catch (error: any) {
       console.error('Check-in error:', error);
-      Alert.alert('Check-in Failed', error.response?.data?.error || error.message || 'Failed to check in');
+      const errorMessage = error.response?.data?.message || 
+                          error.response?.data?.error || 
+                          error.message || 
+                          'Failed to check in';
+      Alert.alert('Check-in Failed', errorMessage);
     } finally {
       setActionLoading(false);
     }
@@ -140,11 +174,21 @@ const EmployeeDashboard = () => {
         location.coords.accuracy
       );
 
+      // Immediately update the state with the new check-out data
+      if (result) {
+        setTodayAttendance(result);
+      }
+
       Alert.alert('Success', 'Checked out successfully!');
+      // Reload data to ensure everything is in sync
       await loadData();
     } catch (error: any) {
       console.error('Check-out error:', error);
-      Alert.alert('Check-out Failed', error.response?.data?.error || error.message || 'Failed to check out');
+      const errorMessage = error.response?.data?.message || 
+                          error.response?.data?.error || 
+                          error.message || 
+                          'Failed to check out';
+      Alert.alert('Check-out Failed', errorMessage);
     } finally {
       setActionLoading(false);
     }
@@ -182,6 +226,15 @@ const EmployeeDashboard = () => {
 
   const isCheckedIn = todayAttendance?.checkInTime && !todayAttendance?.checkOutTime;
   const isCheckedOut = todayAttendance?.checkInTime && todayAttendance?.checkOutTime;
+
+  // Debug logging
+  console.log('Dashboard State:', {
+    hasAttendance: !!todayAttendance,
+    checkInTime: todayAttendance?.checkInTime,
+    checkOutTime: todayAttendance?.checkOutTime,
+    isCheckedIn,
+    isCheckedOut
+  });
 
   if (loading) {
     return (
@@ -222,13 +275,21 @@ const EmployeeDashboard = () => {
 
       {/* Status Card */}
       <View style={styles.statusCard}>
-        <Text style={styles.statusTitle}>Today's Status</Text>
+        <View style={styles.statusHeader}>
+          <Text style={styles.statusTitle}>Today's Status</Text>
+          <Text style={styles.statusDate}>{currentTime.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</Text>
+        </View>
         <View style={styles.statusRow}>
           <View style={styles.statusItem}>
             <Text style={styles.statusLabel}>Check In</Text>
             <Text style={[styles.statusValue, isCheckedIn && styles.activeStatus]}>
               {formatTime(todayAttendance?.checkInTime)}
             </Text>
+            {todayAttendance?.checkInTime && (
+              <Text style={styles.statusSubtext}>
+                {new Date(todayAttendance.checkInTime).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+              </Text>
+            )}
           </View>
           <View style={styles.statusDivider} />
           <View style={styles.statusItem}>
@@ -236,6 +297,11 @@ const EmployeeDashboard = () => {
             <Text style={[styles.statusValue, isCheckedOut && styles.completedStatus]}>
               {formatTime(todayAttendance?.checkOutTime)}
             </Text>
+            {todayAttendance?.checkOutTime && (
+              <Text style={styles.statusSubtext}>
+                {new Date(todayAttendance.checkOutTime).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+              </Text>
+            )}
           </View>
         </View>
         
@@ -254,6 +320,19 @@ const EmployeeDashboard = () => {
             <Text style={styles.completedValue}>
               {formatDuration(todayAttendance?.checkInTime, todayAttendance?.checkOutTime)}
             </Text>
+          </View>
+        )}
+        
+        {todayAttendance && (
+          <View style={styles.attendanceInfo}>
+            <Text style={styles.attendanceInfoText}>
+              Status: {todayAttendance.status || 'CHECKED_IN'}
+            </Text>
+            {todayAttendance.checkInLatitude && todayAttendance.checkInLongitude && (
+              <Text style={styles.attendanceInfoText}>
+                Check-in Location: {todayAttendance.checkInLatitude.toFixed(6)}, {todayAttendance.checkInLongitude.toFixed(6)}
+              </Text>
+            )}
           </View>
         )}
       </View>
@@ -317,27 +396,149 @@ const EmployeeDashboard = () => {
         </View>
       )}
 
-      {/* Quick Stats */}
+      {/* Monthly Stats */}
+      <View style={styles.quickStats}>
+        <Text style={styles.sectionTitle}>Monthly Attendance ({new Date().toLocaleDateString('en-US', { month: 'long' })})</Text>
+        <View style={styles.statsGrid}>
+          <View style={styles.statCard}>
+            <View style={[styles.statCardInner, styles.statCardPresent]}>
+              <Text style={styles.statNumber}>{monthlyStats?.presentDays || 0}</Text>
+              <Text style={styles.statLabel}>Present Days</Text>
+            </View>
+          </View>
+          <View style={styles.statCard}>
+            <View style={[styles.statCardInner, styles.statCardAbsent]}>
+              <Text style={styles.statNumber}>{monthlyStats?.absentDays || 0}</Text>
+              <Text style={styles.statLabel}>Absent Days</Text>
+            </View>
+          </View>
+        </View>
+        <View style={styles.statsGrid}>
+          <View style={styles.statCard}>
+            <View style={[styles.statCardInner, styles.statCardLate]}>
+              <Text style={styles.statNumber}>{monthlyStats?.lateDays || 0}</Text>
+              <Text style={styles.statLabel}>Late Days</Text>
+            </View>
+          </View>
+          <View style={styles.statCard}>
+            <View style={[styles.statCardInner, styles.statCardPercent]}>
+              <Text style={styles.statNumber}>{(monthlyStats?.attendancePercentage || 0).toFixed(0)}%</Text>
+              <Text style={styles.statLabel}>Attendance</Text>
+            </View>
+          </View>
+        </View>
+      </View>
+
+      {/* Quick Info */}
       <View style={styles.quickStats}>
         <Text style={styles.sectionTitle}>Quick Info</Text>
         <View style={styles.statsGrid}>
           <View style={styles.statCard}>
-            <Text style={styles.statLabel}>Status</Text>
-            <Text style={[styles.statValue, isCheckedIn && styles.activeText]}>
-              {isCheckedOut ? 'Completed' : isCheckedIn ? 'Working' : 'Not Started'}
-            </Text>
+            <View style={styles.statCardInner}>
+              <Text style={styles.statLabel}>Status</Text>
+              <Text style={[styles.statValue, isCheckedIn && styles.activeText]}>
+                {isCheckedOut ? 'Completed' : isCheckedIn ? 'Working' : 'Not Started'}
+              </Text>
+            </View>
           </View>
           <View style={styles.statCard}>
-            <Text style={styles.statLabel}>Role</Text>
-            <Text style={styles.statValue}>{user?.role || 'N/A'}</Text>
+            <View style={styles.statCardInner}>
+              <Text style={styles.statLabel}>Role</Text>
+              <Text style={styles.statValue}>{user?.role || 'N/A'}</Text>
+            </View>
           </View>
         </View>
-        <TouchableOpacity
-          style={{ marginTop: 20, backgroundColor: '#FF9800', padding: 14, borderRadius: 10, alignItems: 'center' }}
-          onPress={() => navigation.navigate('LeaveApplication')}
-        >
-          <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 16 }}>Apply for Leave</Text>
-        </TouchableOpacity>
+      </View>
+
+      {/* Team & Manager Info */}
+      <View style={styles.teamInfoSection}>
+        <Text style={styles.sectionTitle}>Team & Manager</Text>
+        <View style={styles.teamInfoCard}>
+          {user?.team && (
+            <>
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Team:</Text>
+                <Text style={styles.infoValue}>{user.team.name}</Text>
+              </View>
+              <View style={styles.infoDivider} />
+            </>
+          )}
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>Department:</Text>
+            <Text style={styles.infoValue}>{user?.department || 'Not Assigned'}</Text>
+          </View>
+          {user?.manager && (
+            <>
+              <View style={styles.infoDivider} />
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Manager:</Text>
+                <Text style={styles.infoValue}>
+                  {user.manager.firstName} {user.manager.lastName}
+                </Text>
+              </View>
+              {user.manager.email && (
+                <View style={styles.infoRow}>
+                  <Text style={styles.infoLabel}>Email:</Text>
+                  <Text style={[styles.infoValue, styles.emailText]}>{user.manager.email}</Text>
+                </View>
+              )}
+              {user.manager.phone && (
+                <View style={styles.infoRow}>
+                  <Text style={styles.infoLabel}>Phone:</Text>
+                  <Text style={styles.infoValue}>{user.manager.phone}</Text>
+                </View>
+              )}
+            </>
+          )}
+          {!user?.manager && (
+            <>
+              <View style={styles.infoDivider} />
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Manager:</Text>
+                <Text style={styles.infoValue}>Not Assigned</Text>
+              </View>
+            </>
+          )}
+        </View>
+      </View>
+
+      {/* Leave Management Section */}
+      <View style={styles.leaveSection}>
+        <Text style={styles.sectionTitle}>Leave Management</Text>
+        <View style={styles.leaveButtonsGrid}>
+          <View style={styles.leaveActionButton}>
+            <TouchableOpacity
+              style={styles.leaveActionButtonInner}
+              onPress={() => navigation.navigate('LeaveApplication')}
+            >
+              <Text style={styles.leaveActionText}>Apply Leave</Text>
+            </TouchableOpacity>
+          </View>
+          
+          <View style={styles.leaveActionButton}>
+            <TouchableOpacity
+              style={styles.leaveActionButtonInner}
+              onPress={() => navigation.navigate('LeaveHistory')}
+            >
+              <Text style={styles.leaveActionText}>Leave History</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+
+      {/* Salary Section */}
+      <View style={styles.leaveSection}>
+        <Text style={styles.sectionTitle}>Salary & Payments</Text>
+        <View style={styles.leaveButtonsGrid}>
+          <View style={styles.leaveActionButton}>
+            <TouchableOpacity
+              style={[styles.leaveActionButtonInner, styles.salaryButton]}
+              onPress={() => navigation.navigate('EmployeeSalary')}
+            >
+              <Text style={styles.leaveActionText}>View My Salary</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
       </View>
     </ScrollView>
   );
@@ -402,6 +603,33 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginBottom: 15,
     color: '#333',
+  },
+  statusHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 15,
+  },
+  statusDate: {
+    fontSize: 14,
+    color: '#666',
+    fontWeight: '500',
+  },
+  statusSubtext: {
+    fontSize: 11,
+    color: '#999',
+    marginTop: 4,
+  },
+  attendanceInfo: {
+    marginTop: 16,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#f0f0f0',
+  },
+  attendanceInfoText: {
+    fontSize: 12,
+    color: '#666',
+    marginBottom: 4,
   },
   statusRow: {
     flexDirection: 'row',
@@ -469,6 +697,17 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     color: '#007AFF',
+  },
+  attendanceInfo: {
+    marginTop: 16,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#f0f0f0',
+  },
+  attendanceInfoText: {
+    fontSize: 12,
+    color: '#666',
+    marginBottom: 4,
   },
   actionContainer: {
     paddingHorizontal: 20,
@@ -539,7 +778,7 @@ const styles = StyleSheet.create({
   },
   quickStats: {
     paddingHorizontal: 20,
-    marginBottom: 30,
+    marginBottom: 20,
   },
   sectionTitle: {
     fontSize: 18,
@@ -549,18 +788,126 @@ const styles = StyleSheet.create({
   },
   statsGrid: {
     flexDirection: 'row',
-    gap: 15,
+    flexWrap: 'wrap',
+    marginHorizontal: -7.5,
   },
   statCard: {
-    flex: 1,
+    width: '50%',
+    paddingHorizontal: 7.5,
+    marginBottom: 15,
+  },
+  statCardInner: {
     backgroundColor: '#fff',
     padding: 15,
+    borderRadius: 10,
+    minHeight: 80,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  statCardPresent: {
+    backgroundColor: '#E8F5E9',
+    borderWidth: 1,
+    borderColor: '#4CAF50',
+  },
+  statCardAbsent: {
+    backgroundColor: '#FFEBEE',
+    borderWidth: 1,
+    borderColor: '#F44336',
+  },
+  statCardLate: {
+    backgroundColor: '#FFF3E0',
+    borderWidth: 1,
+    borderColor: '#FF9800',
+  },
+  statCardPercent: {
+    backgroundColor: '#E3F2FD',
+    borderWidth: 1,
+    borderColor: '#2196F3',
+  },
+  statNumber: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 4,
+  },
+  teamInfoSection: {
+    paddingHorizontal: 20,
+    marginBottom: 20,
+  },
+  teamInfoCard: {
+    backgroundColor: '#fff',
+    padding: 16,
     borderRadius: 10,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
     shadowRadius: 4,
     elevation: 2,
+  },
+  infoRow: {
+    flexDirection: 'row',
+    paddingVertical: 8,
+    alignItems: 'flex-start',
+    flexWrap: 'wrap',
+  },
+  infoLabel: {
+    fontSize: 14,
+    color: '#666',
+    minWidth: 90,
+    fontWeight: '500',
+  },
+  infoValue: {
+    fontSize: 14,
+    color: '#333',
+    fontWeight: '600',
+    flex: 1,
+    flexShrink: 1,
+  },
+  emailText: {
+    color: '#2196F3',
+  },
+  infoDivider: {
+    height: 1,
+    backgroundColor: '#f0f0f0',
+    marginVertical: 8,
+  },
+  leaveSection: {
+    paddingHorizontal: 20,
+    marginBottom: 30,
+  },
+  leaveButtonsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginHorizontal: -7.5,
+  },
+  leaveActionButton: {
+    width: '50%',
+    paddingHorizontal: 7.5,
+    marginBottom: 15,
+  },
+  leaveActionButtonInner: {
+    backgroundColor: '#fff',
+    padding: 14,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    alignItems: 'center',
+    minHeight: 50,
+    justifyContent: 'center',
+  },
+  leaveActionText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#333',
+    textAlign: 'center',
+  },
+  salaryButton: {
+    borderColor: '#4CAF50',
   },
   statLabel: {
     fontSize: 12,

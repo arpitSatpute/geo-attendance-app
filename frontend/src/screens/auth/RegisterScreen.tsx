@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ScrollView } from 'react-native';
-import { Picker } from '@react-native-picker/picker';
 import { AuthService } from '../../services/AuthService';
 
 const RegisterScreen = ({ navigation }: any) => {
@@ -78,19 +77,40 @@ const RegisterScreen = ({ navigation }: any) => {
         secureTextEntry
       />
 
-      <View style={styles.pickerContainer}>
-        <Text style={styles.pickerLabel}>Account Type *</Text>
-        <View style={styles.pickerWrapper}>
-          <Picker
-            selectedValue={formData.role}
-            onValueChange={(value) => setFormData({ ...formData, role: value })}
-            style={styles.picker}
+      <Text style={styles.roleLabel}>Account Type *</Text>
+      <View style={styles.roleContainer}>
+        <TouchableOpacity
+          style={[
+            styles.roleButton,
+            formData.role === 'EMPLOYEE' && styles.roleButtonActive,
+          ]}
+          onPress={() => setFormData({ ...formData, role: 'EMPLOYEE' })}
+        >
+          <Text
+            style={[
+              styles.roleButtonText,
+              formData.role === 'EMPLOYEE' && styles.roleButtonTextActive,
+            ]}
           >
-            <Picker.Item label="Employee" value="EMPLOYEE" />
-            <Picker.Item label="Manager" value="MANAGER" />
-            <Picker.Item label="Admin" value="ADMIN" />
-          </Picker>
-        </View>
+            Employee
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[
+            styles.roleButton,
+            formData.role === 'MANAGER' && styles.roleButtonActive,
+          ]}
+          onPress={() => setFormData({ ...formData, role: 'MANAGER' })}
+        >
+          <Text
+            style={[
+              styles.roleButtonText,
+              formData.role === 'MANAGER' && styles.roleButtonTextActive,
+            ]}
+          >
+            Manager
+          </Text>
+        </TouchableOpacity>
       </View>
 
       <TouchableOpacity
@@ -140,24 +160,38 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#ddd',
   },
-  pickerContainer: {
-    marginBottom: 15,
-  },
-  pickerLabel: {
+  roleLabel: {
     fontSize: 14,
     color: '#333',
-    marginBottom: 8,
     fontWeight: '500',
+    marginBottom: 10,
   },
-  pickerWrapper: {
-    backgroundColor: '#fff',
+  roleContainer: {
+    flexDirection: 'row',
+    marginBottom: 15,
+    gap: 10,
+  },
+  roleButton: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
     borderRadius: 8,
     borderWidth: 1,
     borderColor: '#ddd',
-    overflow: 'hidden',
+    backgroundColor: '#fff',
+    alignItems: 'center',
   },
-  picker: {
-    height: 50,
+  roleButtonActive: {
+    backgroundColor: '#007AFF',
+    borderColor: '#007AFF',
+  },
+  roleButtonText: {
+    fontSize: 14,
+    color: '#666',
+    fontWeight: '500',
+  },
+  roleButtonTextActive: {
+    color: '#fff',
   },
   button: {
     backgroundColor: '#007AFF',

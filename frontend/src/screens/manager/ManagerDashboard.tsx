@@ -18,6 +18,7 @@ const ManagerDashboard = () => {
   const [user, setUser] = useState<any>(null);
   const [teamData, setTeamData] = useState<any>(null);
   const [teamLocations, setTeamLocations] = useState<any[]>([]);
+  const [teamStatus, setTeamStatus] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -36,16 +37,18 @@ const ManagerDashboard = () => {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [userData, locations] = await Promise.all([
+      const [userData, locations, status] = await Promise.all([
         AuthService.getCurrentUser(),
         ApiService.getTeamLocations().catch(() => []),
+        ApiService.getTeamCurrentStatus().catch(() => []),
       ]);
       
       setUser(userData);
       setTeamLocations(locations || []);
+      setTeamStatus(status || []);
       
-      // Calculate team statistics
-      calculateTeamStats(locations || []);
+      // Calculate team statistics from current status
+      calculateTeamStats(status || []);
     } catch (error: any) {
       console.error('Error loading data:', error);
       if (error.response?.status === 401) {
@@ -56,12 +59,12 @@ const ManagerDashboard = () => {
     }
   };
 
-  const calculateTeamStats = (locations: any[]) => {
+  const calculateTeamStats = (status: any[]) => {
     const stats = {
-      totalMembers: locations.length,
-      activeNow: locations.filter(l => l.isActive).length,
-      onField: locations.filter(l => l.status === 'WORKING').length,
-      offline: locations.filter(l => !l.isActive).length,
+      totalMembers: status.length,
+      checkedIn: status.filter(s => s.status === 'CHECKED_IN').length,
+      checkedOut: status.filter(s => s.status === 'CHECKED_OUT').length,
+      absent: status.filter(s => s.status === 'ABSENT').length,
     };
     setTeamData(stats);
   };
@@ -128,21 +131,58 @@ const ManagerDashboard = () => {
             <Text style={styles.statLabel}>Total Members</Text>
           </View>
           <View style={[styles.statCard, styles.successCard]}>
-            <Text style={styles.statNumber}>{teamData?.activeNow || 0}</Text>
-            <Text style={styles.statLabel}>Active Now</Text>
+            <Text style={styles.statNumber}>{teamData?.checkedIn || 0}</Text>
+            <Text style={styles.statLabel}>Checked In</Text>
           </View>
         </View>
         <View style={styles.statsGrid}>
           <View style={[styles.statCard, styles.warningCard]}>
-            <Text style={styles.statNumber}>{teamData?.onField || 0}</Text>
-            <Text style={styles.statLabel}>On Field</Text>
+            <Text style={styles.statNumber}>{teamData?.checkedOut || 0}</Text>
+            <Text style={styles.statLabel}>Checked Out</Text>
           </View>
           <View style={[styles.statCard, styles.dangerCard]}>
-            <Text style={styles.statNumber}>{teamData?.offline || 0}</Text>
-            <Text style={styles.statLabel}>Offline</Text>
+            <Text style={styles.statNumber}>{teamData?.absent || 0}</Text>
+            <Text style={styles.statLabel}>Absent</Text>
           </View>
         </View>
       </View>
+
+      {/* Team Members Current Status */}
+      {teamStatus.length > 0 && (
+        <View style={styles.teamStatusContainer}>
+          <Text style={styles.sectionTitle}>Team Status (Today)</Text>
+          {teamStatus.map((member: any, index: number) => (
+            <View key={member.userId || index} style={styles.memberCard}>
+              <View style={styles.memberInfo}>
+                <Text style={styles.memberName}>
+                  {member.firstName} {member.lastName}
+                </Text>
+                <Text style={styles.memberEmail}>{member.email}</Text>
+              </View>
+              <View style={styles.memberStatusContainer}>
+                <View style={[
+                  styles.statusBadge,
+                  member.status === 'CHECKED_IN' && styles.statusCheckedIn,
+                  member.status === 'CHECKED_OUT' && styles.statusCheckedOut,
+                  member.status === 'ABSENT' && styles.statusAbsent,
+                ]}>
+                  <Text style={styles.statusBadgeText}>{member.status}</Text>
+                </View>
+                {member.checkInTime && (
+                  <Text style={styles.timeText}>
+                    In: {formatTime(member.checkInTime)}
+                  </Text>
+                )}
+                {member.checkOutTime && (
+                  <Text style={styles.timeText}>
+                    Out: {formatTime(member.checkOutTime)}
+                  </Text>
+                )}
+              </View>
+            </View>
+          ))}
+        </View>
+      )}
 
       {/* Quick Actions */}
       <View style={styles.actionsContainer}>
@@ -179,36 +219,6 @@ const ManagerDashboard = () => {
             <Text style={styles.actionText}>Geofences</Text>
           </TouchableOpacity>
         </View>
-      </View>
-
-      {/* Team Members List */}
-      <View style={styles.teamListContainer}>
-        <Text style={styles.sectionTitle}>Team Members</Text>
-        {teamLocations.length === 0 ? (
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyText}>No team members found</Text>
-          </View>
-        ) : (
-          teamLocations.map((member, index) => (
-            <View key={index} style={styles.memberCard}>
-              <View style={styles.memberInfo}>
-                <View style={[
-                  styles.statusDot, 
-                  member.isActive ? styles.statusActive : styles.statusInactive
-                ]} />
-                <View style={styles.memberDetails}>
-                  <Text style={styles.memberName}>
-                    {member.firstName} {member.lastName}
-                  </Text>
-                  <Text style={styles.memberEmail}>{member.email}</Text>
-                  <Text style={styles.memberStatus}>
-                    {member.status || 'Unknown'} • Last seen: {formatTime(member.lastUpdate)}
-                  </Text>
-                </View>
-              </View>
-            </View>
-          ))
-        )}
       </View>
     </ScrollView>
   );
@@ -350,10 +360,43 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 4,
     elevation: 2,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   memberInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flex: 1,
+  },
+  memberStatusContainer: {
+    alignItems: 'flex-end',
+  },
+  statusBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginBottom: 4,
+  },
+  statusBadgeText: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: 'bold',
+  },
+  statusCheckedIn: {
+    backgroundColor: '#4CAF50',
+  },
+  statusCheckedOut: {
+    backgroundColor: '#2196F3',
+  },
+  statusAbsent: {
+    backgroundColor: '#F44336',
+  },
+  timeText: {
+    fontSize: 11,
+    color: '#666',
+  },
+  teamStatusContainer: {
+    paddingHorizontal: 20,
+    marginBottom: 20,
   },
   statusDot: {
     width: 12,
