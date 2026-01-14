@@ -30,6 +30,10 @@ import { AuthService } from './src/services/AuthService';
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
+// Import face screens
+import FaceVerificationScreen from './src/screens/FaceVerificationScreen';
+import FaceRegistrationScreen from './src/screens/FaceRegistrationScreen';
+
 // Auth Stack
 const AuthStack = () => {
   return (
@@ -41,6 +45,7 @@ const AuthStack = () => {
     >
       <Stack.Screen name="Login" component={LoginScreen} />
       <Stack.Screen name="Register" component={RegisterScreen} />
+      <Stack.Screen name="FaceRegistration" component={FaceRegistrationScreen} />
     </Stack.Navigator>
   );
 };
@@ -48,6 +53,7 @@ const AuthStack = () => {
 import LeaveApplicationScreen from './src/screens/employee/LeaveApplicationScreen';
 import LeaveHistoryScreen from './src/screens/employee/LeaveHistoryScreen';
 import EmployeeSalaryScreen from './src/screens/employee/EmployeeSalaryScreen';
+
 // Employee Stack Navigator
 const EmployeeStack = () => {
   return (
@@ -60,6 +66,16 @@ const EmployeeStack = () => {
       <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} options={{ headerTitle: 'Change Password' }} />
       <Stack.Screen name="NotificationSettings" component={NotificationSettingsScreen} options={{ headerTitle: 'Notifications' }} />
       <Stack.Screen name="PrivacySettings" component={PrivacySettingsScreen} options={{ headerTitle: 'Privacy' }} />
+      <Stack.Screen 
+        name="FaceVerification" 
+        component={FaceVerificationScreen} 
+        options={{ headerTitle: 'Face Verification', headerShown: false }} 
+      />
+      <Stack.Screen 
+        name="FaceRegistration" 
+        component={FaceRegistrationScreen} 
+        options={{ headerTitle: 'Face Registration', headerShown: false }} 
+      />
     </Stack.Navigator>
   );
 };
@@ -332,9 +348,20 @@ export default function App() {
       // Check if user is already logged in
       const token = await AuthService.getToken();
       if (token) {
-        setIsLoggedIn(true);
-        const user = await AuthService.getCurrentUser();
-        setUserRole(user.role);
+        // Verify token is still valid (check expiry locally)
+        const isValid = await AuthService.isAuthenticated();
+        if (isValid) {
+          setIsLoggedIn(true);
+          try {
+            const user = await AuthService.getCurrentUser();
+            if (user?.role) {
+              setUserRole(user.role);
+            }
+          } catch (userError) {
+            // If we can't get user from API, try local storage
+            console.log('Could not fetch user from API, using cached data');
+          }
+        }
       }
 
       // Request location permissions
@@ -356,17 +383,29 @@ export default function App() {
     try {
       const token = await AuthService.getToken();
       if (token) {
-        setIsLoggedIn(true);
-        const user = await AuthService.getCurrentUser();
-        setUserRole(user.role);
+        // Check if token is valid without calling API
+        const isValid = await AuthService.isAuthenticated();
+        if (isValid) {
+          setIsLoggedIn(true);
+          // Only update user role if we don't have it yet
+          if (!userRole) {
+            const user = await AuthService.getCurrentUser();
+            if (user?.role) {
+              setUserRole(user.role);
+            }
+          }
+        } else {
+          // Token expired
+          setIsLoggedIn(false);
+          setUserRole(null);
+        }
       } else {
         setIsLoggedIn(false);
         setUserRole(null);
       }
     } catch (error) {
-      console.error('Error refreshing auth state:', error);
-      setIsLoggedIn(false);
-      setUserRole(null);
+      // Don't logout on API errors - only on missing token
+      console.log('Error refreshing auth state (non-critical):', error);
     }
   };
 

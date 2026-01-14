@@ -54,12 +54,11 @@ class ApiServiceClass {
       async (error: AxiosError) => {
         console.error('API Error:', error.response?.status, error.message);
         
+        // Don't automatically logout on 401 - let the app handle it gracefully
+        // The app uses cached data when API fails
+        // Only log for debugging
         if (error.response?.status === 401) {
-          // Token expired or invalid - clear cache
-          this.tokenCache = null;
-          await AsyncStorage.removeItem('authToken');
-          await AsyncStorage.removeItem('user');
-          // You may want to navigate to login screen here
+          console.log('401 error on:', error.config?.url);
         }
         
         return Promise.reject(error);
@@ -163,6 +162,34 @@ class ApiServiceClass {
 
   async getTeamCurrentStatus() {
     const response = await this.api.get('/attendance/team/status');
+    return response.data;
+  }
+
+  /**
+   * Face Verification endpoints
+   */
+  async getFaceVerificationStatus() {
+    const response = await this.api.get('/face-verification/status');
+    return response.data;
+  }
+
+  async isFaceVerificationRequired() {
+    const response = await this.api.get('/face-verification/required');
+    return response.data;
+  }
+
+  async recordFaceVerification(confidence: number) {
+    const response = await this.api.post('/face-verification/verify', { confidence });
+    return response.data;
+  }
+
+  async registerFace(faceImageData: string) {
+    const response = await this.api.post('/face-verification/register', { faceImageData });
+    return response.data;
+  }
+
+  async getFaceRegistrationStatus() {
+    const response = await this.api.get('/face-verification/registration-status');
     return response.data;
   }
 

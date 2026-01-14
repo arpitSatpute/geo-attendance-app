@@ -14,7 +14,7 @@ const RegisterScreen = ({ navigation }: any) => {
   const [loading, setLoading] = useState(false);
 
   const handleRegister = async () => {
-    const { email, password, firstName, lastName, phone } = formData;
+    const { email, password, firstName, lastName } = formData;
 
     if (!email || !password || !firstName || !lastName) {
       Alert.alert('Error', 'Please fill in all required fields');
@@ -23,9 +23,44 @@ const RegisterScreen = ({ navigation }: any) => {
 
     setLoading(true);
     try {
+      // Register user account
       await AuthService.register(formData);
-      Alert.alert('Success', `${formData.role} account created successfully! Please login.`);
-      navigation.navigate('Login');
+      
+      // Ask user to register face
+      Alert.alert(
+        'Account Created!',
+        'Would you like to register your face now for daily attendance verification?',
+        [
+          {
+            text: 'Skip for Now',
+            style: 'cancel',
+            onPress: () => {
+              Alert.alert(
+                'Registration Complete',
+                'You can register your face later from profile settings.',
+                [{ text: 'OK', onPress: () => navigation.navigate('Login') }]
+              );
+            },
+          },
+          {
+            text: 'Register Face',
+            onPress: async () => {
+              // Login temporarily to get token for face registration
+              try {
+                await AuthService.login(formData.email, formData.password);
+                navigation.navigate('FaceRegistration', { isNewUser: true });
+              } catch (loginError) {
+                // If login fails, just go to login screen
+                Alert.alert(
+                  'Account Created',
+                  'Please login to register your face.',
+                  [{ text: 'OK', onPress: () => navigation.navigate('Login') }]
+                );
+              }
+            },
+          },
+        ]
+      );
     } catch (error: any) {
       Alert.alert('Error', error.message || 'Registration failed');
     } finally {

@@ -11,9 +11,12 @@ import {
   RefreshControl,
 } from 'react-native';
 import * as Location from 'expo-location';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AuthService } from '../../services/AuthService';
 import { AttendanceService } from '../../services/AttendanceService';
 import { ApiService } from '../../services/ApiService';
+
+const FACE_VERIFICATION_KEY = 'face_verification_status';
 
 const EmployeeDashboard = () => {
   const navigation = useNavigation<any>();
@@ -25,17 +28,55 @@ const EmployeeDashboard = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [location, setLocation] = useState<any>(null);
+  const [faceVerifiedToday, setFaceVerifiedToday] = useState(false);
+  const [faceRegistered, setFaceRegistered] = useState(true); // Assume registered until we check
+  const [faceCheckDone, setFaceCheckDone] = useState(false);
 
   useEffect(() => {
-    loadData();
+    // Small delay to ensure token is properly cached after login
+    const initTimer = setTimeout(() => {
+      loadData();
+      checkFaceVerificationOnce(); // Check only once on mount
+    }, 100);
     
     // Update clock every second
     const timer = setInterval(() => {
       setCurrentTime(new Date());
     }, 1000);
 
-    return () => clearInterval(timer);
+    return () => {
+      clearTimeout(initTimer);
+      clearInterval(timer);
+    };
   }, []);
+
+  // Check local storage first, only call API if needed (once per day)
+  const checkFaceVerificationOnce = async () => {
+    if (faceCheckDone) return;
+    
+    try {
+      const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+      const stored = await AsyncStorage.getItem(FACE_VERIFICATION_KEY);
+      
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (parsed.date === today && parsed.verified) {
+          // Already verified today, no need to call API
+          setFaceVerifiedToday(true);
+          setFaceRegistered(parsed.registered !== false);
+          setFaceCheckDone(true);
+          return;
+        }
+      }
+      
+      // Not verified today, check with API
+      await checkFaceVerificationStatus();
+      setFaceCheckDone(true);
+    } catch (error) {
+      console.log('Error checking face verification:', error);
+      setFaceCheckDone(true);
+    }
+  };
 
   const loadData = async () => {
     try {
@@ -48,7 +89,7 @@ const EmployeeDashboard = () => {
         return;
       }
 
-      // Verify token is still valid
+      // Verify token is still valid (check locally, don't call API)
       const isAuth = await AuthService.isAuthenticated();
       if (!isAuth) {
         console.log('Token expired or invalid');
@@ -62,31 +103,36 @@ const EmployeeDashboard = () => {
       const startDate = startOfMonth.toISOString().split('T')[0];
       const endDate = endOfMonth.toISOString().split('T')[0];
 
-      // Fetch fresh user data from API (not from cache)
-      const [userDataFromApi, attendance, stats] = await Promise.all([
-        ApiService.getCurrentUser(),
+      // Try to get cached user first
+      let userDataFromApi = await AuthService.getCurrentUser();
+      
+      // Fetch attendance and stats (these are less critical)
+      const [attendance, stats] = await Promise.all([
         AttendanceService.getTodayAttendance().catch((err) => {
-          console.log('No attendance record for today:', err.message);
+          console.log('No attendance record for today');
           return null;
         }),
         AttendanceService.getStatistics(startDate, endDate).catch((err) => {
-          console.log('No stats available:', err.message);
+          console.log('No stats available');
           return null;
         }),
       ]);
       
-      console.log('Loaded user:', userDataFromApi?.name);
-      console.log('Loaded attendance:', JSON.stringify(attendance, null, 2));
-      console.log('Loaded stats:', JSON.stringify(stats, null, 2));
+      // Try to refresh user from API (but don't fail if it errors)
+      try {
+        const freshUser = await ApiService.getCurrentUser();
+        if (freshUser) {
+          userDataFromApi = freshUser;
+        }
+      } catch (userError) {
+        console.log('Could not refresh user from API, using cached data');
+      }
       
       setUser(userDataFromApi);
       setTodayAttendance(attendance);
       setMonthlyStats(stats);
     } catch (error: any) {
       console.error('Error loading data:', error);
-      if (error.response?.status === 401) {
-        console.log('Authentication failed - user may need to login again');
-      }
     } finally {
       setLoading(false);
     }
@@ -119,8 +165,95 @@ const EmployeeDashboard = () => {
     }
   };
 
+  const checkFaceVerificationStatus = async () => {
+    try {
+      const result = await ApiService.isFaceVerificationRequired();
+      const verified = result.verifiedToday;
+      const registered = result.faceRegistered !== false;
+      
+      setFaceVerifiedToday(verified);
+      setFaceRegistered(registered);
+      
+      // Save to local storage so we don't check again today
+      if (verified) {
+        const today = new Date().toISOString().split('T')[0];
+        await AsyncStorage.setItem(FACE_VERIFICATION_KEY, JSON.stringify({
+          date: today,
+          verified: true,
+          registered: registered
+        }));
+      }
+    } catch (error: any) {
+      // If endpoint not found (404) or server error (500), assume face is registered and verified
+      // This allows the app to work even if backend isn't updated yet
+      if (error.response?.status === 404 || error.response?.status === 500) {
+        setFaceVerifiedToday(true);
+        setFaceRegistered(true);
+      }
+    }
+  };
+
+  // Called after successful face verification
+  const onFaceVerificationComplete = async (success: boolean) => {
+    if (success) {
+      setFaceVerifiedToday(true);
+      const today = new Date().toISOString().split('T')[0];
+      await AsyncStorage.setItem(FACE_VERIFICATION_KEY, JSON.stringify({
+        date: today,
+        verified: true,
+        registered: true
+      }));
+    }
+  };
+
+  const handleFaceRegistration = () => {
+    navigation.navigate('FaceRegistration', {
+      onRegistrationComplete: async (success: boolean) => {
+        if (success) {
+          setFaceRegistered(true);
+        }
+      },
+    });
+  };
+
+  const handleFaceVerification = () => {
+    navigation.navigate('FaceVerification', {
+      onVerificationComplete: async (success: boolean) => {
+        if (success) {
+          await onFaceVerificationComplete(true);
+        }
+      },
+    });
+  };
+
   const handleCheckIn = async () => {
     try {
+      // Check if face is registered first
+      if (!faceRegistered) {
+        Alert.alert(
+          'Face Registration Required',
+          'Please register your face first for attendance verification.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Register Now', onPress: handleFaceRegistration },
+          ]
+        );
+        return;
+      }
+
+      // Check if face verification is required
+      if (!faceVerifiedToday) {
+        Alert.alert(
+          'Face Verification Required',
+          'Please verify your face before checking in. This is required once per day.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Verify Now', onPress: handleFaceVerification },
+          ]
+        );
+        return;
+      }
+
       setActionLoading(true);
       const location = await getCurrentLocation();
       
@@ -227,15 +360,6 @@ const EmployeeDashboard = () => {
   const isCheckedIn = todayAttendance?.checkInTime && !todayAttendance?.checkOutTime;
   const isCheckedOut = todayAttendance?.checkInTime && todayAttendance?.checkOutTime;
 
-  // Debug logging
-  console.log('Dashboard State:', {
-    hasAttendance: !!todayAttendance,
-    checkInTime: todayAttendance?.checkInTime,
-    checkOutTime: todayAttendance?.checkOutTime,
-    isCheckedIn,
-    isCheckedOut
-  });
-
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
@@ -337,11 +461,52 @@ const EmployeeDashboard = () => {
         )}
       </View>
 
+      {/* Face Registration Banner - Show if face not registered */}
+      {!faceRegistered && !isCheckedIn && !isCheckedOut && (
+        <TouchableOpacity 
+          style={styles.faceRegistrationBanner}
+          onPress={handleFaceRegistration}
+        >
+          <View style={styles.faceVerificationContent}>
+            <Text style={styles.faceVerificationIcon}>📸</Text>
+            <View style={styles.faceVerificationText}>
+              <Text style={styles.faceRegistrationTitle}>Face Registration Required</Text>
+              <Text style={styles.faceRegistrationSubtitle}>Register your face for attendance</Text>
+            </View>
+          </View>
+          <Text style={styles.faceVerificationArrow}>→</Text>
+        </TouchableOpacity>
+      )}
+
+      {/* Face Verification Banner - Show if registered but not verified today */}
+      {faceRegistered && !faceVerifiedToday && !isCheckedIn && !isCheckedOut && (
+        <TouchableOpacity 
+          style={styles.faceVerificationBanner}
+          onPress={handleFaceVerification}
+        >
+          <View style={styles.faceVerificationContent}>
+            <Text style={styles.faceVerificationIcon}>👤</Text>
+            <View style={styles.faceVerificationText}>
+              <Text style={styles.faceVerificationTitle}>Face Verification Required</Text>
+              <Text style={styles.faceVerificationSubtitle}>Tap to verify before check-in</Text>
+            </View>
+          </View>
+          <Text style={styles.faceVerificationArrow}>→</Text>
+        </TouchableOpacity>
+      )}
+
+      {faceRegistered && faceVerifiedToday && !isCheckedIn && !isCheckedOut && (
+        <View style={styles.faceVerifiedBanner}>
+          <Text style={styles.faceVerifiedIcon}>✓</Text>
+          <Text style={styles.faceVerifiedText}>Face verified for today</Text>
+        </View>
+      )}
+
       {/* Action Buttons */}
       <View style={styles.actionContainer}>
         {!isCheckedIn && !isCheckedOut && (
           <TouchableOpacity
-            style={[styles.actionButton, styles.checkInButton]}
+            style={[styles.actionButton, styles.checkInButton, (!faceRegistered || !faceVerifiedToday) && styles.actionButtonDisabled]}
             onPress={handleCheckIn}
             disabled={actionLoading}
           >
@@ -350,7 +515,9 @@ const EmployeeDashboard = () => {
             ) : (
               <>
                 <Text style={styles.actionButtonText}>Check In</Text>
-                <Text style={styles.actionButtonSubtext}>Start your workday</Text>
+                <Text style={styles.actionButtonSubtext}>
+                  {!faceRegistered ? 'Register face first' : (faceVerifiedToday ? 'Start your workday' : 'Verify face first')}
+                </Text>
               </>
             )}
           </TouchableOpacity>
@@ -713,6 +880,90 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     marginBottom: 20,
   },
+  faceVerificationBanner: {
+    backgroundColor: '#FFF3E0',
+    marginHorizontal: 20,
+    marginBottom: 15,
+    padding: 15,
+    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: '#FFB74D',
+  },
+  faceVerificationContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  faceVerificationIcon: {
+    fontSize: 28,
+    marginRight: 12,
+  },
+  faceVerificationText: {
+    flex: 1,
+  },
+  faceVerificationTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#E65100',
+  },
+  faceVerificationSubtitle: {
+    fontSize: 13,
+    color: '#FF8F00',
+    marginTop: 2,
+  },
+  faceVerificationArrow: {
+    fontSize: 20,
+    color: '#E65100',
+    fontWeight: 'bold',
+  },
+  faceVerifiedBanner: {
+    backgroundColor: '#E8F5E9',
+    marginHorizontal: 20,
+    marginBottom: 15,
+    padding: 12,
+    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#81C784',
+  },
+  faceVerifiedIcon: {
+    fontSize: 18,
+    color: '#4CAF50',
+    marginRight: 8,
+    fontWeight: 'bold',
+  },
+  faceVerifiedText: {
+    fontSize: 14,
+    color: '#388E3C',
+    fontWeight: '500',
+  },
+  faceRegistrationBanner: {
+    backgroundColor: '#E3F2FD',
+    marginHorizontal: 20,
+    marginBottom: 15,
+    padding: 15,
+    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: '#64B5F6',
+  },
+  faceRegistrationTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#1565C0',
+  },
+  faceRegistrationSubtitle: {
+    fontSize: 13,
+    color: '#1976D2',
+    marginTop: 2,
+  },
   actionButton: {
     padding: 20,
     borderRadius: 15,
@@ -728,6 +979,9 @@ const styles = StyleSheet.create({
   },
   checkOutButton: {
     backgroundColor: '#FF5722',
+  },
+  actionButtonDisabled: {
+    opacity: 0.6,
   },
   actionButtonText: {
     fontSize: 20,
