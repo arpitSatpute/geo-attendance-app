@@ -74,8 +74,14 @@ public class SecurityConfig {
 
     @Bean
     public WebSecurityCustomizer webSecurityCustomizer() {
-        // Completely bypass Spring Security filters for auth endpoints, debug endpoints, and docs
-        return (web) -> web.ignoring().requestMatchers("/api/auth/**", "/auth/**", "/auth/debug/**", "/debug/**", "/public/**", "/swagger-ui/**", "/v3/api-docs/**", "/error", "/error/**");
+        // Completely bypass Spring Security filters for auth endpoints (except /me), debug endpoints, and docs
+        // Note: /auth/me requires authentication, so don't bypass it
+        return (web) -> web.ignoring().requestMatchers(
+            "/api/auth/login", "/api/auth/register", "/api/auth/logout",
+            "/auth/login", "/auth/register", "/auth/logout",
+            "/auth/debug/**", "/debug/**", "/public/**", 
+            "/swagger-ui/**", "/v3/api-docs/**", "/error", "/error/**"
+        );
     }
 
     @Bean
@@ -88,13 +94,15 @@ public class SecurityConfig {
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        // Public authentication endpoints (login, register, logout, etc.)
-                        .requestMatchers("/api/auth/**", "/auth/**", "/auth/debug/**", "/debug/**", "/public/**", "/error", "/error/**").permitAll()
+                        // Public authentication endpoints (login, register, logout)
+                        .requestMatchers("/api/auth/login", "/api/auth/register", "/api/auth/logout").permitAll()
+                        .requestMatchers("/auth/login", "/auth/register", "/auth/logout").permitAll()
+                        .requestMatchers("/auth/debug/**", "/debug/**", "/public/**", "/error", "/error/**").permitAll()
                         // Swagger/OpenAPI documentation endpoints
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
                         // Allow OPTIONS requests for CORS
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        // All other endpoints require authentication
+                        // All other endpoints require authentication (including /auth/me)
                         .anyRequest().authenticated()
                 );
 

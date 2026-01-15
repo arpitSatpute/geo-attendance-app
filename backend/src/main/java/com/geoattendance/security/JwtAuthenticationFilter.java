@@ -33,9 +33,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         // Log for debugging (commons-logging logger accepts single object)
         logger.debug("JWT Filter - URI: " + path + " , ServletPath: " + servletPath);
 
-        // Skip JWT filter for all auth endpoints (login, register, logout)
-        boolean shouldSkip = path.startsWith("/auth") || path.startsWith("/api/auth") ||
-                path.contains("/swagger-ui") || path.contains("/v3/api-docs");
+        // Skip JWT filter only for public auth endpoints (login, register, logout)
+        // Do NOT skip /auth/me - it requires authentication
+        boolean shouldSkip = 
+                path.equals("/auth/login") || path.equals("/api/auth/login") ||
+                path.equals("/auth/register") || path.equals("/api/auth/register") ||
+                path.equals("/auth/logout") || path.equals("/api/auth/logout") ||
+                path.startsWith("/auth/debug") || path.startsWith("/api/auth/debug") ||
+                path.contains("/swagger-ui") || path.contains("/v3/api-docs") ||
+                path.startsWith("/debug") || path.startsWith("/public") ||
+                path.startsWith("/error");
 
         if (shouldSkip) {
             logger.debug("Skipping JWT filter for path: " + path);

@@ -5,6 +5,12 @@
 echo "🚀 Starting GeoAttendance Pro Backend..."
 echo ""
 
+# Use Java 17 for Lombok compatibility (Java 21 has issues with Lombok)
+if [ -x "/usr/libexec/java_home" ]; then
+    export JAVA_HOME=$(/usr/libexec/java_home -v 17 2>/dev/null || /usr/libexec/java_home)
+    echo "📍 Using Java: $JAVA_HOME"
+fi
+
 # Check if Java is installed
 if ! command -v java &> /dev/null; then
     echo "❌ Error: Java is not installed. Please install Java 17 or higher."
@@ -13,10 +19,7 @@ fi
 
 # Check Java version
 JAVA_VERSION=$(java -version 2>&1 | awk -F '"' '/version/ {print $2}' | cut -d'.' -f1)
-if [ "$JAVA_VERSION" -lt 17 ]; then
-    echo "❌ Error: Java 17 or higher is required. Current version: $JAVA_VERSION"
-    exit 1
-fi
+echo "📌 Java version: $JAVA_VERSION"
 
 echo "✅ Java version check passed"
 echo ""

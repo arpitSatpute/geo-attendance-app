@@ -151,13 +151,15 @@ public class AttendanceService {
         List<AttendanceRecord> records = getAttendanceHistory(user, startDate, endDate);
 
         long totalDays = startDate.until(endDate).getDays();
+        // Count both CHECKED_IN and CHECKED_OUT as present (CHECKED_IN means still at work)
         long presentDays = records.stream()
-            .filter(r -> r.getStatus() == AttendanceRecord.AttendanceStatus.CHECKED_OUT)
+            .filter(r -> r.getStatus() == AttendanceRecord.AttendanceStatus.CHECKED_OUT ||
+                         r.getStatus() == AttendanceRecord.AttendanceStatus.CHECKED_IN)
             .count();
         long lateDays = records.stream()
             .filter(r -> r.getStatus() == AttendanceRecord.AttendanceStatus.LATE)
             .count();
-        long absentDays = totalDays - presentDays;
+        long absentDays = totalDays - presentDays - lateDays;
 
         double attendancePercentage = totalDays > 0 ? (presentDays * 100.0) / totalDays : 0;
 
@@ -200,6 +202,7 @@ public class AttendanceService {
         AttendanceRecord record = AttendanceRecord.builder()
             .userId(user.getId())
             .geofenceId(geofence.getId())
+            .checkInTime(LocalDateTime.now())
             .checkInLatitude(latitude)
             .checkInLongitude(longitude)
             .locationAccuracyMeters(accuracy)

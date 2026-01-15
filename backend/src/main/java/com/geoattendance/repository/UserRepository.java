@@ -19,4 +19,13 @@ public interface UserRepository extends MongoRepository<User, String> {
     List<User> findByManagerId(String managerId);
     
     List<User> findByActiveTrue();
+    
+    // Find users by team
+    List<User> findByTeamId(String teamId);
+    
+    // Find users with face registered
+    List<User> findByFaceRegisteredTrue();
+    
+    // Find users without face registered
+    List<User> findByFaceRegisteredFalse();
 }

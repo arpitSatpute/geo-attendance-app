@@ -1,77 +1,138 @@
-import * as tf from '@tensorflow/tfjs';
-import '@tensorflow/tfjs-react-native';
-import * as blazeface from '@tensorflow-models/blazeface';
-import { Camera } from 'expo-camera';
-import * as FileSystem from 'expo-file-system';
+import { readAsStringAsync } from 'expo-file-system';
+import { ApiService } from './ApiService';
+
+interface FaceVerificationResult {
+  success: boolean;
+  message: string;
+  faceRegistered: boolean;
+  verifiedToday: boolean;
+  confidence?: number;
+  verificationDate?: string;
+}
 
 export class FaceRecognitionService {
-  private model: blazeface.BlazeFaceModel | null = null;
   private initialized = false;
 
-  async initialize() {
-    if (this.initialized) return;
-
-    try {
-      await tf.ready();
-      this.model = await blazeface.load();
-      this.initialized = true;
-      console.log('Face detection model loaded');
-    } catch (error) {
-      console.error('Failed to load face detection model:', error);
-      throw error;
-    }
+  async initialize(): Promise<void> {
+    // No model loading needed - Python service handles face recognition
+    this.initialized = true;
+    console.log('FaceRecognitionService initialized');
   }
 
-  async detectFace(imageUri: string): Promise {
-    if (!this.model) {
-      throw new Error('Model not initialized');
-    }
-
+  /**
+   * Convert image URI to base64
+   */
+  private async imageToBase64(imageUri: string): Promise<string> {
     try {
-      // Read image as base64
-      const imageBase64 = await FileSystem.readAsStringAsync(imageUri, {
-        encoding: FileSystem.EncodingType.Base64,
+      const base64 = await readAsStringAsync(imageUri, {
+        encoding: 'base64',
       });
-
-      // Convert to tensor
-      const imageTensor = this.base64ToTensor(imageBase64);
-      
-      // Detect faces
-      const predictions = await this.model.estimateFaces(imageTensor, false);
-      
-      // Cleanup
-      imageTensor.dispose();
-
-      return predictions.length > 0;
+      return `data:image/jpeg;base64,${base64}`;
     } catch (error) {
-      console.error('Face detection error:', error);
-      return false;
+      console.error('Error converting image to base64:', error);
+      throw new Error('Failed to process image');
     }
   }
 
-  private base64ToTensor(base64: string): tf.Tensor3D {
-    const buffer = tf.util.encodeString(base64, 'base64');
-    const tensor = tf.node.decodeImage(buffer, 3);
-    return tensor as tf.Tensor3D;
-  }
-
-  async verifyAttendance(imageUri: string): Promise {
-    const hasFace = await this.detectFace(imageUri);
-
-    if (!hasFace) {
+  /**
+   * Check if user needs to register face or verify today
+   */
+  async checkVerificationStatus(): Promise<FaceVerificationResult> {
+    try {
+      const response = await ApiService.get('/face-verification/required');
+      return response.data;
+    } catch (error: any) {
+      console.error('Error checking verification status:', error);
       return {
         success: false,
-        confidence: 0,
-        message: 'No face detected. Please ensure your face is visible.',
+        message: error.response?.data?.message || 'Failed to check status',
+        faceRegistered: false,
+        verifiedToday: false,
       };
     }
+  }
 
-    // TODO: Implement face matching with stored reference
-    // For now, just verify a face exists
+  /**
+   * Register user's face (first time)
+   */
+  async registerFace(imageUri: string): Promise<FaceVerificationResult> {
+    try {
+      const faceImageData = await this.imageToBase64(imageUri);
+      
+      const response = await ApiService.post('/face-verification/register', {
+        faceImageData,
+      });
+      
+      return response.data;
+    } catch (error: any) {
+      console.error('Error registering face:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to register face',
+        faceRegistered: false,
+        verifiedToday: false,
+      };
+    }
+  }
+
+  /**
+   * Verify face for daily attendance
+   */
+  async verifyFace(imageUri: string): Promise<FaceVerificationResult> {
+    try {
+      const faceImageData = await this.imageToBase64(imageUri);
+      
+      const response = await ApiService.post('/face-verification/verify', {
+        faceImageData,
+      });
+      
+      return response.data;
+    } catch (error: any) {
+      console.error('Error verifying face:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to verify face',
+        faceRegistered: true,
+        verifiedToday: false,
+      };
+    }
+  }
+
+  /**
+   * Check registration status
+   */
+  async getRegistrationStatus(): Promise<FaceVerificationResult> {
+    try {
+      const response = await ApiService.get('/face-verification/registration-status');
+      return response.data;
+    } catch (error: any) {
+      console.error('Error getting registration status:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to get status',
+        faceRegistered: false,
+        verifiedToday: false,
+      };
+    }
+  }
+
+  /**
+   * Legacy method for compatibility - verify attendance
+   */
+  async verifyAttendance(imageUri: string): Promise<{
+    success: boolean;
+    confidence: number;
+    message: string;
+  }> {
+    const result = await this.verifyFace(imageUri);
+    
     return {
-      success: true,
-      confidence: 0.85,
-      message: 'Face verified successfully',
+      success: result.success,
+      confidence: result.confidence || (result.success ? 1.0 : 0),
+      message: result.message,
     };
   }
 }
+
+// Singleton instance
+export const faceRecognitionService = new FaceRecognitionService();

@@ -48,6 +48,20 @@ public class User {
     @Builder.Default
     private boolean active = true;
     
+    // Team assignment
+    private String teamId;
+    
+    // Face registration data (base64 encoded face image reference)
+    private String faceImageData;
+    
+    // Face descriptor for face comparison (comma-separated float values)
+    private String faceDescriptor;
+    
+    private LocalDateTime faceRegisteredAt;
+    
+    @Builder.Default
+    private boolean faceRegistered = false;
+    
     @CreatedDate
     private LocalDateTime createdAt;
     
