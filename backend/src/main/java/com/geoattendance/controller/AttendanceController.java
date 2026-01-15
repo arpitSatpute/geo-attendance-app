@@ -1,9 +1,11 @@
 package com.geoattendance.controller;
 
 import com.geoattendance.entity.AttendanceRecord;
+import com.geoattendance.entity.Team;
 import com.geoattendance.entity.User;
 import com.geoattendance.service.AttendanceService;
 import com.geoattendance.service.AuthenticationService;
+import com.geoattendance.service.TeamService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -13,8 +15,10 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/attendance")
@@ -24,6 +28,7 @@ public class AttendanceController {
     
     private final AttendanceService attendanceService;
     private final AuthenticationService authenticationService;
+    private final TeamService teamService;
     
     /**
      * Get today's attendance for current user
@@ -51,16 +56,16 @@ public class AttendanceController {
     }
     
     /**
-     * Get team attendance (for managers)
+     * Get team attendance (for managers) - includes user name and email
      */
     @GetMapping("/team")
     @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN')")
-    public ResponseEntity<List<AttendanceRecord>> getTeamAttendance(
+    public ResponseEntity<List<AttendanceService.TeamAttendanceRecord>> getTeamAttendance(
         @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
         @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate
     ) {
         User currentUser = authenticationService.getCurrentUser();
-        List<AttendanceRecord> records = attendanceService.getTeamAttendance(currentUser, startDate, endDate);
+        List<AttendanceService.TeamAttendanceRecord> records = attendanceService.getTeamAttendance(currentUser, startDate, endDate);
         return ResponseEntity.ok(records);
     }
 
@@ -161,5 +166,48 @@ public class AttendanceController {
         User currentUser = authenticationService.getCurrentUser();
         AttendanceService.AttendanceReport report = attendanceService.getAttendanceReport(currentUser, startDate, endDate);
         return ResponseEntity.ok(report);
+    }
+
+    /**
+     * Get work hours for current employee
+     */
+    @GetMapping("/work-hours")
+    @PreAuthorize("hasAnyRole('EMPLOYEE', 'MANAGER', 'ADMIN')")
+    public ResponseEntity<Map<String, Object>> getMyWorkHours() {
+        User currentUser = authenticationService.getCurrentUser();
+        Optional<Team> teamOpt = teamService.getTeamByEmployeeId(currentUser.getId());
+        
+        Map<String, Object> response = new HashMap<>();
+        
+        if (teamOpt.isEmpty()) {
+            response.put("configured", false);
+            response.put("message", "You are not assigned to any team");
+            return ResponseEntity.ok(response);
+        }
+        
+        Team team = teamOpt.get();
+        
+        if (team.getWorkStartTime() == null) {
+            response.put("configured", false);
+            response.put("message", "Work hours are not configured for your team");
+            return ResponseEntity.ok(response);
+        }
+        
+        response.put("configured", true);
+        response.put("teamName", team.getName());
+        response.put("workStartTime", team.getWorkStartTime().toString());
+        response.put("workEndTime", team.getWorkEndTime() != null ? team.getWorkEndTime().toString() : null);
+        response.put("checkInDeadline", team.getCheckInDeadline() != null ? team.getCheckInDeadline().toString() : null);
+        response.put("checkOutAllowedFrom", team.getCheckOutAllowedFrom() != null ? team.getCheckOutAllowedFrom().toString() : null);
+        response.put("checkInBufferMinutes", team.getCheckInBufferMinutes());
+        response.put("checkOutBufferMinutes", team.getCheckOutBufferMinutes());
+        
+        // Calculate actual allowed times
+        if (team.getWorkStartTime() != null) {
+            int buffer = team.getCheckInBufferMinutes() != null ? team.getCheckInBufferMinutes() : 15;
+            response.put("earliestCheckIn", team.getWorkStartTime().minusMinutes(buffer).toString());
+        }
+        
+        return ResponseEntity.ok(response);
     }
 }

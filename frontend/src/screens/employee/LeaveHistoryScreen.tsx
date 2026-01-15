@@ -74,9 +74,9 @@ const LeaveHistoryScreen = ({ navigation }: any) => {
           <Text style={styles.reasonText}>{leave.reason}</Text>
         </View>
 
-        {leave.appliedDate && (
+        {(leave.createdAt || leave.appliedDate) && (
           <Text style={styles.appliedDate}>
-            Applied: {LeaveService.formatDate(leave.appliedDate)}
+            Applied: {LeaveService.formatDate(leave.createdAt || leave.appliedDate || '')}
           </Text>
         )}
       </View>

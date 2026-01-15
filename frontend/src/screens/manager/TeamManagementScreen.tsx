@@ -8,6 +8,7 @@ import {
   TextInput,
   Alert,
   Modal,
+  Platform,
 } from 'react-native';
 import { ApiService } from '../../services/ApiService';
 
@@ -17,6 +18,19 @@ interface Team {
   managerId: string;
   employeeIds: string[];
   geofenceId?: string;
+  workStartTime?: string;
+  workEndTime?: string;
+  checkInDeadline?: string;
+  checkOutAllowedFrom?: string;
+}
+
+interface WorkHoursData {
+  workStartTime: string;
+  workEndTime: string;
+  checkInDeadline: string;
+  checkOutAllowedFrom: string;
+  checkInBufferMinutes: number;
+  checkOutBufferMinutes: number;
 }
 
 const TeamManagementScreen = () => {
@@ -33,6 +47,18 @@ const TeamManagementScreen = () => {
   const [availableGeofences, setAvailableGeofences] = useState<any[]>([]);
   const [loadingGeofences, setLoadingGeofences] = useState(false);
   const [selectedGeofenceId, setSelectedGeofenceId] = useState<string | null>(null);
+  
+  // Work Hours Modal State
+  const [showWorkHoursModal, setShowWorkHoursModal] = useState<{ open: boolean; teamId: string | null }>({ open: false, teamId: null });
+  const [workHoursData, setWorkHoursData] = useState<WorkHoursData>({
+    workStartTime: '09:00',
+    workEndTime: '18:00',
+    checkInDeadline: '10:00',
+    checkOutAllowedFrom: '17:00',
+    checkInBufferMinutes: 15,
+    checkOutBufferMinutes: 0,
+  });
+  const [savingWorkHours, setSavingWorkHours] = useState(false);
 
   useEffect(() => {
     loadTeams();
@@ -135,6 +161,42 @@ const TeamManagementScreen = () => {
     }
   };
 
+  const handleShowWorkHoursModal = async (teamId: string) => {
+    setShowWorkHoursModal({ open: true, teamId });
+    try {
+      const response = await ApiService.get(`/teams/${teamId}/work-hours`);
+      const data = response.data;
+      if (data.workStartTime) {
+        setWorkHoursData({
+          workStartTime: data.workStartTime || '09:00',
+          workEndTime: data.workEndTime || '18:00',
+          checkInDeadline: data.checkInDeadline || '10:00',
+          checkOutAllowedFrom: data.checkOutAllowedFrom || '17:00',
+          checkInBufferMinutes: data.checkInBufferMinutes || 15,
+          checkOutBufferMinutes: data.checkOutBufferMinutes || 0,
+        });
+      }
+    } catch (error) {
+      // Use defaults if not configured
+    }
+  };
+
+  const handleSaveWorkHours = async () => {
+    if (!showWorkHoursModal.teamId) return;
+    
+    setSavingWorkHours(true);
+    try {
+      await ApiService.post(`/teams/${showWorkHoursModal.teamId}/work-hours`, workHoursData);
+      setShowWorkHoursModal({ open: false, teamId: null });
+      loadTeams();
+      Alert.alert('Success', 'Work hours configured successfully');
+    } catch (error: any) {
+      Alert.alert('Error', error.response?.data?.error || 'Failed to save work hours');
+    } finally {
+      setSavingWorkHours(false);
+    }
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -166,6 +228,11 @@ const TeamManagementScreen = () => {
                 <View style={styles.actionButtonWrapper}>
                   <TouchableOpacity style={styles.setGeofenceButton} onPress={() => handleShowGeofenceModal(team.id)}>
                     <Text style={styles.setGeofenceButtonText}>Set Geofence</Text>
+                  </TouchableOpacity>
+                </View>
+                <View style={styles.actionButtonWrapper}>
+                  <TouchableOpacity style={styles.workHoursButton} onPress={() => handleShowWorkHoursModal(team.id)}>
+                    <Text style={styles.workHoursButtonText}>Work Hours</Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -283,6 +350,80 @@ const TeamManagementScreen = () => {
           </View>
         </View>
       </Modal>
+      {/* Work Hours Modal */}
+      <Modal visible={showWorkHoursModal.open} animationType="slide" transparent={true}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Configure Work Hours</Text>
+            <ScrollView style={{ maxHeight: 400 }}>
+              <Text style={styles.inputLabel}>Work Start Time (HH:MM)</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="09:00"
+                value={workHoursData.workStartTime}
+                onChangeText={(text) => setWorkHoursData({ ...workHoursData, workStartTime: text })}
+              />
+              
+              <Text style={styles.inputLabel}>Work End Time (HH:MM)</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="18:00"
+                value={workHoursData.workEndTime}
+                onChangeText={(text) => setWorkHoursData({ ...workHoursData, workEndTime: text })}
+              />
+              
+              <Text style={styles.inputLabel}>Check-in Deadline (HH:MM)</Text>
+              <Text style={styles.inputHint}>After this time, employee will be marked absent</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="10:00"
+                value={workHoursData.checkInDeadline}
+                onChangeText={(text) => setWorkHoursData({ ...workHoursData, checkInDeadline: text })}
+              />
+              
+              <Text style={styles.inputLabel}>Check-out Allowed From (HH:MM)</Text>
+              <Text style={styles.inputHint}>Earliest time employees can check out</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="17:00"
+                value={workHoursData.checkOutAllowedFrom}
+                onChangeText={(text) => setWorkHoursData({ ...workHoursData, checkOutAllowedFrom: text })}
+              />
+              
+              <Text style={styles.inputLabel}>Check-in Buffer (minutes)</Text>
+              <Text style={styles.inputHint}>How early employees can check in before start time</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="15"
+                keyboardType="numeric"
+                value={String(workHoursData.checkInBufferMinutes)}
+                onChangeText={(text) => setWorkHoursData({ ...workHoursData, checkInBufferMinutes: parseInt(text) || 0 })}
+              />
+              
+              <Text style={styles.inputLabel}>Check-out Buffer (minutes)</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="0"
+                keyboardType="numeric"
+                value={String(workHoursData.checkOutBufferMinutes)}
+                onChangeText={(text) => setWorkHoursData({ ...workHoursData, checkOutBufferMinutes: parseInt(text) || 0 })}
+              />
+            </ScrollView>
+            <View style={styles.modalActions}>
+              <TouchableOpacity style={styles.cancelButton} onPress={() => setShowWorkHoursModal({ open: false, teamId: null })}>
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[styles.saveButton, savingWorkHours && styles.disabledButton]} 
+                onPress={handleSaveWorkHours}
+                disabled={savingWorkHours}
+              >
+                <Text style={styles.saveButtonText}>{savingWorkHours ? 'Saving...' : 'Save'}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -324,6 +465,11 @@ const styles = StyleSheet.create({
   selectedGeofence: { borderWidth: 2, borderColor: '#673AB7', backgroundColor: '#ede7f6', paddingVertical: 12, paddingHorizontal: 8, borderRadius: 6, marginBottom: 8 },
   geofenceName: { fontSize: 16, fontWeight: '500', color: '#222', marginBottom: 2 },
   geofenceDesc: { fontSize: 13, color: '#666' },
+  workHoursButton: { backgroundColor: '#FF9800', borderRadius: 6, paddingVertical: 10, paddingHorizontal: 8, alignItems: 'center', width: '100%' },
+  workHoursButtonText: { color: '#fff', fontWeight: '600', fontSize: 13 },
+  inputLabel: { fontSize: 14, fontWeight: '600', color: '#333', marginBottom: 4, marginTop: 12 },
+  inputHint: { fontSize: 12, color: '#888', marginBottom: 4 },
+  disabledButton: { backgroundColor: '#999' },
 });
 
 export default TeamManagementScreen;

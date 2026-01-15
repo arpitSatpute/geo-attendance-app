@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/leaves")
+@RequestMapping("/leaves")
 public class LeaveController {
 
     private static final Logger log = LoggerFactory.getLogger(LeaveController.class);
@@ -30,14 +30,15 @@ public class LeaveController {
      */
     @PostMapping
     @PreAuthorize("hasAnyRole('EMPLOYEE', 'MANAGER', 'ADMIN')")
-    public ResponseEntity<LeaveResponse> applyLeave(@RequestBody LeaveRequest request) {
+    public ResponseEntity<?> applyLeave(@RequestBody LeaveRequest request) {
         try {
             String userId = getCurrentUserId();
+            log.info("User {} applying for leave: type={}, from={}, to={}", userId, request.getLeaveType(), request.getStartDate(), request.getEndDate());
             LeaveResponse response = leaveService.applyLeave(userId, request);
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             log.error("Error applying for leave: {}", e.getMessage(), e);
-            return ResponseEntity.badRequest().build();
+            return ResponseEntity.badRequest().body(java.util.Map.of("error", e.getMessage()));
         }
     }
 

@@ -3,12 +3,18 @@ import { ApiService } from './ApiService';
 export interface LeaveRequest {
   id?: string;
   userId?: string;
+  userEmail?: string;
+  userName?: string;
   leaveType: 'SICK' | 'CASUAL' | 'ANNUAL' | 'UNPAID';
   startDate: string;
   endDate: string;
   reason: string;
   status?: 'PENDING' | 'APPROVED' | 'REJECTED';
   appliedDate?: string;
+  approvedById?: string;
+  approvalDate?: string;
+  createdAt?: string;
+  // For backward compatibility with existing UI
   user?: {
     id: string;
     firstName: string;
@@ -20,17 +26,21 @@ export interface LeaveRequest {
 class LeaveServiceClass {
   async applyLeave(leaveData: Omit<LeaveRequest, 'id' | 'status' | 'appliedDate' | 'userId'>): Promise<LeaveRequest> {
     try {
+      console.log('LeaveService.applyLeave - Sending data:', JSON.stringify(leaveData));
       const response = await ApiService.applyLeave(leaveData);
+      console.log('LeaveService.applyLeave - Response:', JSON.stringify(response));
       return response;
     } catch (error: any) {
       console.error('Error applying for leave:', error);
-      throw new Error(error.message || 'Failed to apply for leave');
+      console.error('Error details:', error.response?.data);
+      const message = error.response?.data?.error || error.response?.data?.message || error.message || 'Failed to apply for leave';
+      throw new Error(message);
     }
   }
 
   async getMyLeaves(): Promise<LeaveRequest[]> {
     try {
-      const response = await ApiService.getLeaveHistory();
+      const response = await ApiService.getMyLeaves();
       return response;
     } catch (error: any) {
       console.error('Error fetching leave history:', error);
@@ -40,11 +50,21 @@ class LeaveServiceClass {
 
   async getAllLeaves(): Promise<LeaveRequest[]> {
     try {
-      const response = await ApiService.get('/leaves');
-      return response.data;
+      const response = await ApiService.getAllLeaves();
+      return response;
     } catch (error: any) {
       console.error('Error fetching all leaves:', error);
       throw new Error(error.message || 'Failed to fetch all leaves');
+    }
+  }
+
+  async getPendingLeaves(): Promise<LeaveRequest[]> {
+    try {
+      const response = await ApiService.getPendingLeaves();
+      return response;
+    } catch (error: any) {
+      console.error('Error fetching pending leaves:', error);
+      throw new Error(error.message || 'Failed to fetch pending leaves');
     }
   }
 

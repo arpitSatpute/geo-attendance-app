@@ -14,16 +14,13 @@ import { ApiService } from '../../services/ApiService';
 interface AttendanceRecord {
   id: string;
   userId: string;
+  userName?: string;
+  userEmail?: string;
   checkInTime: string;
   checkOutTime?: string;
   checkInLatitude: number;
   checkInLongitude: number;
   status: string;
-  user?: {
-    firstName: string;
-    lastName: string;
-    email: string;
-  };
 }
 
 interface GroupedAttendance {
@@ -59,8 +56,8 @@ const TeamAttendanceScreen = () => {
         const userId = record.userId;
         if (!grouped[userId]) {
           grouped[userId] = {
-            userName: `User ${userId.substring(0, 8)}`,
-            userEmail: '',
+            userName: record.userName || `User ${userId.substring(0, 8)}`,
+            userEmail: record.userEmail || '',
             records: [],
           };
         }

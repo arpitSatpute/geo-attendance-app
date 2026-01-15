@@ -10,6 +10,7 @@
 /Users/arpitrameshsatpute/Desktop/geo-attendance-app/backend/src/main/java/com/geoattendance/controller/FaceVerificationController.java
 /Users/arpitrameshsatpute/Desktop/geo-attendance-app/backend/src/main/java/com/geoattendance/controller/GeofenceController.java
 /Users/arpitrameshsatpute/Desktop/geo-attendance-app/backend/src/main/java/com/geoattendance/controller/LeaveController.java
+/Users/arpitrameshsatpute/Desktop/geo-attendance-app/backend/src/main/java/com/geoattendance/controller/LocationController.java
 /Users/arpitrameshsatpute/Desktop/geo-attendance-app/backend/src/main/java/com/geoattendance/controller/PublicDebugController.java
 /Users/arpitrameshsatpute/Desktop/geo-attendance-app/backend/src/main/java/com/geoattendance/controller/SalaryController.java
 /Users/arpitrameshsatpute/Desktop/geo-attendance-app/backend/src/main/java/com/geoattendance/controller/TeamController.java
@@ -22,6 +23,7 @@
 /Users/arpitrameshsatpute/Desktop/geo-attendance-app/backend/src/main/java/com/geoattendance/dto/RegisterRequest.java
 /Users/arpitrameshsatpute/Desktop/geo-attendance-app/backend/src/main/java/com/geoattendance/dto/SalaryCalculationRequest.java
 /Users/arpitrameshsatpute/Desktop/geo-attendance-app/backend/src/main/java/com/geoattendance/dto/SalaryResponse.java
+/Users/arpitrameshsatpute/Desktop/geo-attendance-app/backend/src/main/java/com/geoattendance/dto/WorkHoursRequest.java
 /Users/arpitrameshsatpute/Desktop/geo-attendance-app/backend/src/main/java/com/geoattendance/entity/AttendanceRecord.java
 /Users/arpitrameshsatpute/Desktop/geo-attendance-app/backend/src/main/java/com/geoattendance/entity/FaceVerification.java
 /Users/arpitrameshsatpute/Desktop/geo-attendance-app/backend/src/main/java/com/geoattendance/entity/Geofence.java
@@ -36,6 +38,7 @@
 /Users/arpitrameshsatpute/Desktop/geo-attendance-app/backend/src/main/java/com/geoattendance/repository/SalaryRepository.java
 /Users/arpitrameshsatpute/Desktop/geo-attendance-app/backend/src/main/java/com/geoattendance/repository/TeamRepository.java
 /Users/arpitrameshsatpute/Desktop/geo-attendance-app/backend/src/main/java/com/geoattendance/repository/UserRepository.java
+/Users/arpitrameshsatpute/Desktop/geo-attendance-app/backend/src/main/java/com/geoattendance/scheduler/AttendanceScheduler.java
 /Users/arpitrameshsatpute/Desktop/geo-attendance-app/backend/src/main/java/com/geoattendance/security/JwtAuthenticationEntryPoint.java
 /Users/arpitrameshsatpute/Desktop/geo-attendance-app/backend/src/main/java/com/geoattendance/security/JwtAuthenticationFilter.java
 /Users/arpitrameshsatpute/Desktop/geo-attendance-app/backend/src/main/java/com/geoattendance/security/JwtTokenProvider.java

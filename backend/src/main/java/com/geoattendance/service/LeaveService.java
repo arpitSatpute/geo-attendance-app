@@ -29,14 +29,14 @@ public class LeaveService {
     }
 
     @Transactional
-    public LeaveResponse applyLeave(String userId, LeaveRequest request) {
-        log.info("User {} applying for leave from {} to {}", userId, request.getStartDate(), request.getEndDate());
+    public LeaveResponse applyLeave(String userEmail, LeaveRequest request) {
+        log.info("User {} applying for leave from {} to {}", userEmail, request.getStartDate(), request.getEndDate());
         
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+        User user = userRepository.findByEmail(userEmail)
+                .orElseThrow(() -> new RuntimeException("User not found with email: " + userEmail));
         
         Leave leave = Leave.builder()
-                .userId(userId)
+                .userId(user.getId())
                 .leaveType(Leave.LeaveType.valueOf(request.getLeaveType().toUpperCase()))
                 .startDate(request.getStartDate())
                 .endDate(request.getEndDate())
@@ -51,11 +51,14 @@ public class LeaveService {
         return LeaveResponse.fromEntity(leave, user.getEmail(), user.getFirstName() + " " + user.getLastName());
     }
 
-    public List<LeaveResponse> getMyLeaves(String userId) {
-        List<Leave> leaves = leaveRepository.findByUserId(userId);
-        User user = userRepository.findById(userId).orElse(null);
-        String email = user != null ? user.getEmail() : "";
-        String name = user != null ? user.getFirstName() + " " + user.getLastName() : "";
+    public List<LeaveResponse> getMyLeaves(String userEmail) {
+        User user = userRepository.findByEmail(userEmail).orElse(null);
+        if (user == null) {
+            return List.of();
+        }
+        List<Leave> leaves = leaveRepository.findByUserId(user.getId());
+        String email = user.getEmail();
+        String name = user.getFirstName() + " " + user.getLastName();
         
         return leaves.stream()
                 .map(leave -> LeaveResponse.fromEntity(leave, email, name))

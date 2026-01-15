@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigation } from '@react-navigation/native';
 import {
   View,
@@ -9,14 +9,16 @@ import {
   Alert,
   ActivityIndicator,
   RefreshControl,
+  AppState,
 } from 'react-native';
 import * as Location from 'expo-location';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AuthService } from '../../services/AuthService';
-import { AttendanceService } from '../../services/AttendanceService';
+import { AttendanceService, LocationUpdateResult } from '../../services/AttendanceService';
 import { ApiService } from '../../services/ApiService';
 
 const FACE_VERIFICATION_KEY = 'face_verification_status';
+const LOCATION_TRACKING_INTERVAL = 30000; // 30 seconds
 
 const EmployeeDashboard = () => {
   const navigation = useNavigation<any>();
@@ -31,12 +33,17 @@ const EmployeeDashboard = () => {
   const [faceVerifiedToday, setFaceVerifiedToday] = useState(false);
   const [faceRegistered, setFaceRegistered] = useState(true); // Assume registered until we check
   const [faceCheckDone, setFaceCheckDone] = useState(false);
+  const [locationStatus, setLocationStatus] = useState<string>('');
+  const [autoTrackingEnabled, setAutoTrackingEnabled] = useState(true);
+  const locationTrackingRef = useRef<NodeJS.Timeout | null>(null);
+  const appState = useRef(AppState.currentState);
 
   useEffect(() => {
     // Small delay to ensure token is properly cached after login
     const initTimer = setTimeout(() => {
       loadData();
       checkFaceVerificationOnce(); // Check only once on mount
+      startLocationTracking(); // Start automatic location tracking
     }, 100);
     
     // Update clock every second
@@ -44,11 +51,97 @@ const EmployeeDashboard = () => {
       setCurrentTime(new Date());
     }, 1000);
 
+    // Handle app state changes (foreground/background)
+    const subscription = AppState.addEventListener('change', handleAppStateChange);
+
     return () => {
       clearTimeout(initTimer);
       clearInterval(timer);
+      stopLocationTracking();
+      subscription.remove();
     };
   }, []);
+
+  // Handle app state changes for location tracking
+  const handleAppStateChange = (nextAppState: string) => {
+    if (appState.current.match(/inactive|background/) && nextAppState === 'active') {
+      // App came to foreground - restart tracking
+      if (autoTrackingEnabled) {
+        startLocationTracking();
+      }
+    } else if (nextAppState.match(/inactive|background/)) {
+      // App going to background - stop tracking to save battery
+      stopLocationTracking();
+    }
+    appState.current = nextAppState as any;
+  };
+
+  // Start automatic location tracking
+  const startLocationTracking = async () => {
+    if (locationTrackingRef.current) return; // Already tracking
+    
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        console.log('Location permission not granted');
+        return;
+      }
+      
+      // Initial location update
+      await updateLocationAndStatus();
+      
+      // Set up interval for periodic updates
+      locationTrackingRef.current = setInterval(async () => {
+        await updateLocationAndStatus();
+      }, LOCATION_TRACKING_INTERVAL);
+      
+      console.log('Location tracking started');
+    } catch (error) {
+      console.error('Error starting location tracking:', error);
+    }
+  };
+
+  // Stop location tracking
+  const stopLocationTracking = () => {
+    if (locationTrackingRef.current) {
+      clearInterval(locationTrackingRef.current);
+      locationTrackingRef.current = null;
+      console.log('Location tracking stopped');
+    }
+  };
+
+  // Update location and send to backend for auto check-in/check-out
+  const updateLocationAndStatus = async () => {
+    try {
+      const loc = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+      });
+      
+      setLocation(loc);
+      
+      // Send location to backend for auto check-in/check-out
+      const result = await AttendanceService.updateLocation(
+        loc.coords.latitude,
+        loc.coords.longitude,
+        loc.coords.accuracy
+      );
+      
+      if (result) {
+        setLocationStatus(result.status);
+        
+        // If status changed to auto checked in/out, show notification and reload
+        if (result.status === 'AUTO_CHECKED_IN') {
+          Alert.alert('Auto Check-In', result.message || 'You have been automatically checked in.');
+          await loadData();
+        } else if (result.status === 'AUTO_CHECKED_OUT') {
+          Alert.alert('Auto Check-Out', result.message || 'You have been automatically checked out.');
+          await loadData();
+        }
+      }
+    } catch (error) {
+      console.log('Error updating location:', error);
+    }
+  };
 
   // Check local storage first, only call API if needed (once per day)
   const checkFaceVerificationOnce = async () => {
@@ -461,6 +554,24 @@ const EmployeeDashboard = () => {
         )}
       </View>
 
+      {/* Location Tracking Status */}
+      <View style={styles.locationTrackingCard}>
+        <View style={styles.locationTrackingHeader}>
+          <Text style={styles.locationTrackingTitle}>📍 Auto Location Tracking</Text>
+          <View style={[styles.trackingIndicator, styles.trackingActive]} />
+        </View>
+        <Text style={styles.locationTrackingStatus}>
+          {locationStatus === 'CHECKED_IN' && '✅ You are inside the work area'}
+          {locationStatus === 'CHECKED_OUT' && '📍 You are outside the work area'}
+          {locationStatus === 'AUTO_CHECKED_IN' && '✅ Automatically checked in'}
+          {locationStatus === 'AUTO_CHECKED_OUT' && '📍 Automatically checked out'}
+          {locationStatus === 'AWAITING_FIRST_CHECKIN' && '⏳ Waiting for first check-in'}
+          {locationStatus === 'ABSENT' && '❌ Marked absent for today'}
+          {locationStatus === 'OUTSIDE' && '📍 Outside work area'}
+          {!locationStatus && '🔄 Detecting location...'}
+        </Text>
+      </View>
+
       {/* Face Registration Banner - Show if face not registered */}
       {!faceRegistered && !isCheckedIn && !isCheckedOut && (
         <TouchableOpacity 
@@ -630,41 +741,25 @@ const EmployeeDashboard = () => {
               <View style={styles.infoDivider} />
             </>
           )}
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Department:</Text>
-            <Text style={styles.infoValue}>{user?.department || 'Not Assigned'}</Text>
-          </View>
           {user?.manager && (
             <>
-              <View style={styles.infoDivider} />
               <View style={styles.infoRow}>
                 <Text style={styles.infoLabel}>Manager:</Text>
                 <Text style={styles.infoValue}>
                   {user.manager.firstName} {user.manager.lastName}
                 </Text>
               </View>
-              {user.manager.email && (
-                <View style={styles.infoRow}>
-                  <Text style={styles.infoLabel}>Email:</Text>
-                  <Text style={[styles.infoValue, styles.emailText]}>{user.manager.email}</Text>
-                </View>
-              )}
-              {user.manager.phone && (
-                <View style={styles.infoRow}>
-                  <Text style={styles.infoLabel}>Phone:</Text>
-                  <Text style={styles.infoValue}>{user.manager.phone}</Text>
-                </View>
-              )}
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Email:</Text>
+                <Text style={[styles.infoValue, styles.emailText]}>{user.manager.email}</Text>
+              </View>
             </>
           )}
           {!user?.manager && (
-            <>
-              <View style={styles.infoDivider} />
-              <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Manager:</Text>
-                <Text style={styles.infoValue}>Not Assigned</Text>
-              </View>
-            </>
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Manager:</Text>
+              <Text style={styles.infoValue}>Not Assigned</Text>
+            </View>
           )}
         </View>
       </View>
@@ -1172,6 +1267,58 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#333',
+  },
+  // Location Tracking Styles
+  locationTrackingCard: {
+    marginHorizontal: 20,
+    marginBottom: 15,
+    backgroundColor: '#fff',
+    padding: 16,
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  locationTrackingHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  locationTrackingTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+  },
+  trackingIndicator: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+  },
+  trackingActive: {
+    backgroundColor: '#4CAF50',
+  },
+  trackingInactive: {
+    backgroundColor: '#9E9E9E',
+  },
+  locationTrackingStatus: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 12,
+  },
+  toggleTrackingButton: {
+    backgroundColor: '#f5f5f5',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  toggleTrackingText: {
+    fontSize: 14,
+    color: '#333',
+    fontWeight: '500',
   },
 });
 

@@ -9,6 +9,7 @@ import com.geoattendance.repository.GeofenceRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import java.time.LocalTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -91,5 +92,27 @@ public class TeamService {
             return Optional.of(teams.get(0)); // Return first team if employee is in multiple teams
         }
         return Optional.empty();
+    }
+
+    @Transactional
+    public Team setWorkHours(String teamId, LocalTime workStartTime, LocalTime workEndTime,
+                             LocalTime checkInDeadline, LocalTime checkOutAllowedFrom,
+                             Integer checkInBufferMinutes, Integer checkOutBufferMinutes) {
+        Team team = teamRepository.findById(teamId)
+                .orElseThrow(() -> new RuntimeException("Team not found: " + teamId));
+        
+        team.setWorkStartTime(workStartTime);
+        team.setWorkEndTime(workEndTime);
+        team.setCheckInDeadline(checkInDeadline);
+        team.setCheckOutAllowedFrom(checkOutAllowedFrom);
+        
+        if (checkInBufferMinutes != null) {
+            team.setCheckInBufferMinutes(checkInBufferMinutes);
+        }
+        if (checkOutBufferMinutes != null) {
+            team.setCheckOutBufferMinutes(checkOutBufferMinutes);
+        }
+        
+        return teamRepository.save(team);
     }
 }

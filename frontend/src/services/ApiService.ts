@@ -33,9 +33,9 @@ class ApiServiceClass {
         
         if (token) {
           config.headers.Authorization = `Bearer ${token}`;
-          console.log('API Request:', config.method?.toUpperCase(), config.url, '- Token present');
+          console.log('API Request:', config.method?.toUpperCase(), config.baseURL + config.url, '- Token present');
         } else {
-          console.log('API Request:', config.method?.toUpperCase(), config.url, '- NO TOKEN');
+          console.log('API Request:', config.method?.toUpperCase(), config.baseURL + config.url, '- NO TOKEN');
         }
         return config;
       },
@@ -52,13 +52,26 @@ class ApiServiceClass {
         return response;
       },
       async (error: AxiosError) => {
-        console.error('API Error:', error.response?.status, error.message);
+        const status = error.response?.status;
+        const url = error.config?.url;
+        const responseData = error.response?.data as any;
+        
+        console.error('API Error:', status, error.message);
+        console.error('API Error URL:', url);
+        console.error('API Error Response:', JSON.stringify(responseData));
         
         // Don't automatically logout on 401 - let the app handle it gracefully
         // The app uses cached data when API fails
         // Only log for debugging
-        if (error.response?.status === 401) {
-          console.log('401 error on:', error.config?.url);
+        if (status === 401) {
+          console.log('401 error on:', url);
+        }
+        
+        // Attach detailed error message
+        if (responseData?.message) {
+          error.message = responseData.message;
+        } else if (responseData?.error) {
+          error.message = responseData.error;
         }
         
         return Promise.reject(error);
@@ -301,6 +314,37 @@ class ApiServiceClass {
     }
   }
 
+  /**
+   * Get my work hours (for employees)
+   */
+  async getMyWorkHours() {
+    const response = await this.api.get('/attendance/work-hours');
+    return response.data;
+  }
+
+  /**
+   * Set work hours for a team (for managers)
+   */
+  async setTeamWorkHours(teamId: string, workHoursData: {
+    workStartTime: string;
+    workEndTime: string;
+    checkInDeadline: string;
+    checkOutAllowedFrom: string;
+    checkInBufferMinutes: number;
+    checkOutBufferMinutes: number;
+  }) {
+    const response = await this.api.post(`/teams/${teamId}/work-hours`, workHoursData);
+    return response.data;
+  }
+
+  /**
+   * Get work hours for a team
+   */
+  async getTeamWorkHours(teamId: string) {
+    const response = await this.api.get(`/teams/${teamId}/work-hours`);
+    return response.data;
+  }
+
   async getCurrentLocation() {
     const response = await this.api.get('/location/current');
     return response.data;
@@ -326,21 +370,42 @@ class ApiServiceClass {
    * Leave endpoints
    */
   async applyLeave(leaveData: any) {
-    const response = await this.api.post('/leaves', leaveData);
+    console.log('ApiService.applyLeave - URL:', this.api.defaults.baseURL + '/leaves');
+    console.log('ApiService.applyLeave - Data:', JSON.stringify(leaveData));
+    try {
+      const response = await this.api.post('/leaves', leaveData);
+      return response.data;
+    } catch (error: any) {
+      console.error('ApiService.applyLeave - Error status:', error.response?.status);
+      console.error('ApiService.applyLeave - Error data:', JSON.stringify(error.response?.data));
+      throw error;
+    }
+  }
+
+  // Get employee's own leave history
+  async getMyLeaves() {
+    const response = await this.api.get('/leaves/my-leaves');
     return response.data;
   }
 
-  async getLeaveHistory() {
+  // Get all leaves (for managers)
+  async getAllLeaves() {
     const response = await this.api.get('/leaves');
     return response.data;
   }
 
-  async approveLeave(id: number) {
+  // Get pending leaves (for managers)
+  async getPendingLeaves() {
+    const response = await this.api.get('/leaves/pending');
+    return response.data;
+  }
+
+  async approveLeave(id: string | number) {
     const response = await this.api.post(`/leaves/${id}/approve`);
     return response.data;
   }
 
-  async rejectLeave(id: number) {
+  async rejectLeave(id: string | number) {
     const response = await this.api.post(`/leaves/${id}/reject`);
     return response.data;
   }
