@@ -131,10 +131,21 @@ const EmployeeDashboard = () => {
         
         // If status changed to auto checked in/out, show notification and reload
         if (result.status === 'AUTO_CHECKED_IN') {
-          Alert.alert('Auto Check-In', result.message || 'You have been automatically checked in.');
+          const geofenceInfo = result.geofenceName ? ` at ${result.geofenceName}` : '';
+          Alert.alert(
+            '✅ Auto Check-In',
+            result.message || `You have been automatically checked in${geofenceInfo}.`,
+            [{ text: 'OK', style: 'default' }],
+            { cancelable: true }
+          );
           await loadData();
         } else if (result.status === 'AUTO_CHECKED_OUT') {
-          Alert.alert('Auto Check-Out', result.message || 'You have been automatically checked out.');
+          Alert.alert(
+            '📍 Auto Check-Out',
+            result.message || 'You have been automatically checked out as you left the work area.',
+            [{ text: 'OK', style: 'default' }],
+            { cancelable: true }
+          );
           await loadData();
         }
       }

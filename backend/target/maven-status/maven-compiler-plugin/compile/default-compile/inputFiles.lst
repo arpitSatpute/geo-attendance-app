@@ -14,6 +14,7 @@
 /Users/arpitrameshsatpute/Desktop/geo-attendance-app/backend/src/main/java/com/geoattendance/controller/PublicDebugController.java
 /Users/arpitrameshsatpute/Desktop/geo-attendance-app/backend/src/main/java/com/geoattendance/controller/SalaryController.java
 /Users/arpitrameshsatpute/Desktop/geo-attendance-app/backend/src/main/java/com/geoattendance/controller/TeamController.java
+/Users/arpitrameshsatpute/Desktop/geo-attendance-app/backend/src/main/java/com/geoattendance/controller/UserController.java
 /Users/arpitrameshsatpute/Desktop/geo-attendance-app/backend/src/main/java/com/geoattendance/dto/AuthRequest.java
 /Users/arpitrameshsatpute/Desktop/geo-attendance-app/backend/src/main/java/com/geoattendance/dto/AuthResponse.java
 /Users/arpitrameshsatpute/Desktop/geo-attendance-app/backend/src/main/java/com/geoattendance/dto/FaceVerificationRequest.java

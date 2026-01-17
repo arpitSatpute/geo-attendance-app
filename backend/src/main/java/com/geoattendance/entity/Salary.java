@@ -10,7 +10,6 @@ import org.springframework.data.mongodb.core.index.CompoundIndex;
 import org.springframework.data.mongodb.core.index.CompoundIndexes;
 
 import java.time.LocalDateTime;
-import java.time.YearMonth;
 
 @Document(collection = "salaries")
 @CompoundIndexes({
@@ -33,7 +32,7 @@ public class Salary {
     private String userName;
     
     @Indexed
-    private YearMonth month;
+    private String month;  // Format: "2026-01"
     
     private Double baseSalary;
     

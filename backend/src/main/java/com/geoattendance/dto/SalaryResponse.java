@@ -18,7 +18,7 @@ public class SalaryResponse {
     private String userId;
     private String userEmail;
     private String userName;
-    private YearMonth month;
+    private String month;  // Changed from YearMonth to String for JSON serialization
     private Double baseSalary;
     private Integer totalWorkingDays;
     private Integer presentDays;
@@ -45,7 +45,7 @@ public class SalaryResponse {
                 .userId(salary.getUserId())
                 .userEmail(salary.getUserEmail())
                 .userName(salary.getUserName())
-                .month(salary.getMonth())
+                .month(salary.getMonth() != null ? salary.getMonth().toString() : null)  // Convert YearMonth to String
                 .baseSalary(salary.getBaseSalary())
                 .totalWorkingDays(salary.getTotalWorkingDays())
                 .presentDays(salary.getPresentDays())
@@ -59,7 +59,7 @@ public class SalaryResponse {
                 .totalBonus(salary.getTotalBonus())
                 .netSalary(salary.getNetSalary())
                 .onTimePercentage(salary.getOnTimePercentage())
-                .status(salary.getStatus().name())
+                .status(salary.getStatus() != null ? salary.getStatus().name() : null)
                 .calculatedBy(salary.getCalculatedBy())
                 .calculatedAt(salary.getCalculatedAt())
                 .approvedBy(salary.getApprovedBy())

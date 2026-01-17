@@ -47,9 +47,10 @@ public class SalaryService {
         User user = userRepository.findById(request.getUserId())
                 .orElseThrow(() -> new RuntimeException("User not found"));
         
-        YearMonth month = YearMonth.of(request.getYear(), request.getMonth());
-        LocalDate startDate = month.atDay(1);
-        LocalDate endDate = month.atEndOfMonth();
+        YearMonth yearMonth = YearMonth.of(request.getYear(), request.getMonth());
+        String monthStr = yearMonth.toString();  // Format: "2026-01"
+        LocalDate startDate = yearMonth.atDay(1);
+        LocalDate endDate = yearMonth.atEndOfMonth();
         
         // Fetch attendance records
         LocalDateTime startDateTime = startDate.atStartOfDay();
@@ -99,12 +100,12 @@ public class SalaryService {
         double onTimePercentage = presentDays > 0 ? ((double) onTimeDays / presentDays) * 100 : 0.0;
         
         // Check if salary already exists
-        Salary salary = salaryRepository.findByUserIdAndMonth(request.getUserId(), month)
+        Salary salary = salaryRepository.findByUserIdAndMonth(request.getUserId(), monthStr)
                 .orElse(Salary.builder()
                         .userId(user.getId())
                         .userEmail(user.getEmail())
                         .userName(user.getFirstName() + " " + user.getLastName())
-                        .month(month)
+                        .month(monthStr)
                         .build());
         
         // Update salary details
@@ -134,8 +135,8 @@ public class SalaryService {
     }
 
     public SalaryResponse getMySalary(String userId, Integer year, Integer month) {
-        YearMonth yearMonth = YearMonth.of(year, month);
-        Salary salary = salaryRepository.findByUserIdAndMonth(userId, yearMonth)
+        String monthStr = String.format("%d-%02d", year, month);  // Format: "2026-01"
+        Salary salary = salaryRepository.findByUserIdAndMonth(userId, monthStr)
                 .orElseThrow(() -> new RuntimeException("Salary not calculated for this month"));
         
         return SalaryResponse.fromEntity(salary);
@@ -149,8 +150,8 @@ public class SalaryService {
     }
 
     public List<SalaryResponse> getTeamSalaries(Integer year, Integer month) {
-        YearMonth yearMonth = YearMonth.of(year, month);
-        List<Salary> salaries = salaryRepository.findByMonth(yearMonth);
+        String monthStr = String.format("%d-%02d", year, month);  // Format: "2026-01"
+        List<Salary> salaries = salaryRepository.findByMonth(monthStr);
         return salaries.stream()
                 .map(SalaryResponse::fromEntity)
                 .collect(Collectors.toList());

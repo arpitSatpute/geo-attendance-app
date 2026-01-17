@@ -219,6 +219,15 @@ const ManagerDashboard = () => {
             <Text style={styles.actionText}>Geofences</Text>
           </TouchableOpacity>
         </View>
+        <View style={styles.actionsGrid}>
+          <TouchableOpacity 
+            style={styles.actionButton}
+            onPress={() => navigation.navigate('ManagerSalary')}
+          >
+            <Text style={styles.actionIcon}>💰</Text>
+            <Text style={styles.actionText}>Salary Management</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </ScrollView>
   );

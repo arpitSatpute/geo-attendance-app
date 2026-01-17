@@ -238,15 +238,15 @@ const GeofenceManagementScreen = () => {
               <View style={styles.cardBody}>
                 <View style={styles.infoRow}>
                   <Text style={styles.infoLabel}>Latitude:</Text>
-                  <Text style={styles.infoValue}>{geofence.latitude.toFixed(6)}</Text>
+                  <Text style={styles.infoValue}>{geofence.latitude?.toFixed(6) ?? 'N/A'}</Text>
                 </View>
                 <View style={styles.infoRow}>
                   <Text style={styles.infoLabel}>Longitude:</Text>
-                  <Text style={styles.infoValue}>{geofence.longitude.toFixed(6)}</Text>
+                  <Text style={styles.infoValue}>{geofence.longitude?.toFixed(6) ?? 'N/A'}</Text>
                 </View>
                 <View style={styles.infoRow}>
                   <Text style={styles.infoLabel}>Radius:</Text>
-                  <Text style={styles.infoValue}>{geofence.radius}m</Text>
+                  <Text style={styles.infoValue}>{geofence.radius ?? 0}m</Text>
                 </View>
               </View>
 

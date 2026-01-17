@@ -6,6 +6,7 @@ com/geoattendance/entity/Geofence$GeofenceType.class
 com/geoattendance/dto/FaceVerificationRequest.class
 com/geoattendance/entity/Salary$SalaryBuilder.class
 com/geoattendance/entity/Leave$LeaveType.class
+com/geoattendance/controller/UserController.class
 com/geoattendance/dto/FaceVerificationRequest$FaceVerificationRequestBuilder.class
 com/geoattendance/dto/FaceVerificationResponse$FaceVerificationResponseBuilder.class
 com/geoattendance/controller/TeamController.class
@@ -29,6 +30,7 @@ com/geoattendance/service/SalaryService.class
 com/geoattendance/scheduler/AttendanceScheduler.class
 com/geoattendance/controller/AuthController.class
 com/geoattendance/service/AttendanceService$TeamMemberStatus.class
+com/geoattendance/controller/UserController$UserDto.class
 com/geoattendance/entity/FaceVerification$FaceVerificationBuilder.class
 com/geoattendance/security/JwtTokenProvider.class
 com/geoattendance/controller/AttendanceController.class

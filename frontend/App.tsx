@@ -145,12 +145,14 @@ const EmployeeTabNavigator = () => {
 // Manager Stack Navigator
 import TeamAttendanceScreen from './src/screens/manager/TeamAttendanceScreen';
 import LeaveApprovalScreen from './src/screens/manager/LeaveApprovalScreen';
+import ManagerSalaryScreen from './src/screens/manager/ManagerSalaryScreen';
 const ManagerStack = () => {
   return (
     <Stack.Navigator>
       <Stack.Screen name="ManagerTabs" component={ManagerTabNavigator} options={{ headerShown: false }} />
       <Stack.Screen name="TeamAttendance" component={TeamAttendanceScreen} options={{ headerTitle: 'Team Attendance' }} />
       <Stack.Screen name="LeaveApproval" component={LeaveApprovalScreen} options={{ headerTitle: 'Leave Approval' }} />
+      <Stack.Screen name="ManagerSalary" component={ManagerSalaryScreen} options={{ headerTitle: 'Salary Management' }} />
       <Stack.Screen name="Reports" component={ReportsScreen} options={{ headerTitle: 'Reports' }} />
       <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} options={{ headerTitle: 'Change Password' }} />
       <Stack.Screen name="NotificationSettings" component={NotificationSettingsScreen} options={{ headerTitle: 'Notifications' }} />

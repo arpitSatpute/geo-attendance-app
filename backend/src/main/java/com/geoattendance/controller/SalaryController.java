@@ -15,7 +15,7 @@ import java.time.YearMonth;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/salary")
+@RequestMapping("/salary")
 public class SalaryController {
 
     private static final Logger log = LoggerFactory.getLogger(SalaryController.class);

@@ -144,22 +144,22 @@ const ManagerSalaryScreen = () => {
       <View style={styles.salaryDetails}>
         <View style={styles.salaryRow}>
           <Text style={styles.salaryLabel}>Net Salary:</Text>
-          <Text style={styles.salaryAmount}>{SalaryService.formatCurrency(salary.netSalary)}</Text>
+          <Text style={styles.salaryAmount}>{SalaryService.formatCurrency(salary.netSalary ?? 0)}</Text>
         </View>
         <View style={styles.salaryRow}>
           <Text style={styles.salaryLabel}>Present/Total Days:</Text>
           <Text style={styles.salaryValue}>
-            {salary.presentDays}/{salary.totalWorkingDays}
+            {salary.presentDays ?? 0}/{salary.totalWorkingDays ?? 0}
           </Text>
         </View>
         <View style={styles.salaryRow}>
           <Text style={styles.salaryLabel}>On-Time %:</Text>
-          <Text style={styles.salaryValue}>{salary.onTimePercentage.toFixed(1)}%</Text>
+          <Text style={styles.salaryValue}>{(salary.onTimePercentage ?? 0).toFixed(1)}%</Text>
         </View>
         <View style={styles.salaryRow}>
           <Text style={styles.salaryLabel}>Bonus:</Text>
           <Text style={[styles.salaryValue, { color: '#4caf50' }]}>
-            {SalaryService.formatCurrency(salary.totalBonus)}
+            {SalaryService.formatCurrency(salary.totalBonus ?? 0)}
           </Text>
         </View>
       </View>
