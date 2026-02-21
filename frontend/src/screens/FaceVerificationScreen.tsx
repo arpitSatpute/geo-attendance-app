@@ -45,7 +45,9 @@ export function FaceVerificationScreen({ navigation, route }: FaceVerificationSc
     if (onVerificationComplete) {
       onVerificationComplete(true);
     }
-    navigation.goBack();
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+    }
   };
 
   const handleCapture = () => {
@@ -73,7 +75,7 @@ export function FaceVerificationScreen({ navigation, route }: FaceVerificationSc
       const confidence = 0.85 + Math.random() * 0.1; // 0.85-0.95
 
       // Record verification with backend
-      const result = await ApiService.recordFaceVerification(confidence);
+      const result = await ApiService.recordFaceVerification(`data:image/jpg;base64,${photo.base64}`, confidence);
 
       if (result.success) {
         Alert.alert(
@@ -115,7 +117,7 @@ export function FaceVerificationScreen({ navigation, route }: FaceVerificationSc
         <TouchableOpacity style={styles.permissionButton} onPress={requestPermission}>
           <Text style={styles.permissionButtonText}>Grant Permission</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.cancelButton} onPress={() => navigation.goBack()}>
+        <TouchableOpacity style={styles.cancelButton} onPress={() => navigation.canGoBack() && navigation.goBack()}>
           <Text style={styles.cancelButtonText}>Cancel</Text>
         </TouchableOpacity>
       </View>
@@ -124,7 +126,8 @@ export function FaceVerificationScreen({ navigation, route }: FaceVerificationSc
 
   return (
     <View style={styles.container}>
-      <CameraView ref={cameraRef} style={styles.camera} facing={facing}>
+      <View style={styles.cameraContainer}>
+        <CameraView ref={cameraRef} style={styles.camera} facing={facing} />
         <View style={styles.overlay}>
           {/* Face guide oval */}
           <View style={styles.faceGuideContainer}>
@@ -136,7 +139,7 @@ export function FaceVerificationScreen({ navigation, route }: FaceVerificationSc
             </Text>
           </View>
         </View>
-      </CameraView>
+      </View>
 
       {/* Controls */}
       <View style={styles.controls}>
@@ -159,7 +162,7 @@ export function FaceVerificationScreen({ navigation, route }: FaceVerificationSc
           )}
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.closeButton} onPress={() => navigation.goBack()}>
+        <TouchableOpacity style={styles.closeButton} onPress={() => navigation.canGoBack() && navigation.goBack()}>
           <Ionicons name="close" size={28} color="#fff" />
         </TouchableOpacity>
       </View>
@@ -192,11 +195,15 @@ const styles = StyleSheet.create({
     marginTop: 16,
     fontSize: 16,
   },
-  camera: {
+  cameraContainer: {
     flex: 1,
+    position: 'relative',
+  },
+  camera: {
+    ...StyleSheet.absoluteFillObject,
   },
   overlay: {
-    flex: 1,
+    ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0,0,0,0.4)',
     justifyContent: 'center',
     alignItems: 'center',

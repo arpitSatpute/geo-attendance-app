@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet, Alert, ActivityIndicator } fr
 import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
 import { Ionicons } from '@expo/vector-icons';
 import { ApiService } from '../services/ApiService';
+import { AuthService } from '../services/AuthService';
 
 interface FaceRegistrationScreenProps {
   navigation: any;
@@ -24,19 +25,27 @@ export function FaceRegistrationScreen({ navigation, route }: FaceRegistrationSc
   const onRegistrationComplete = route?.params?.onRegistrationComplete;
   const isNewUser = route?.params?.isNewUser || false;
 
-  const handleSuccess = () => {
+  const handleSuccess = async () => {
     if (onRegistrationComplete) {
       onRegistrationComplete(true);
     }
-    if (isNewUser) {
-      // Navigate to login after registration
-      Alert.alert(
-        'Registration Complete',
-        'Your account and face have been registered successfully. Please login to continue.',
-        [{ text: 'OK', onPress: () => navigation.navigate('Login') }]
-      );
-    } else {
-      navigation.goBack();
+
+    try {
+      const authenticated = await AuthService.isAuthenticated();
+
+      if (isNewUser && !authenticated) {
+        // Only navigate to Login if not authenticated
+        navigation.navigate('Login');
+      } else if (navigation.canGoBack()) {
+        navigation.goBack();
+      }
+      // If can't go back and authenticated, the RootNavigator in App.tsx 
+      // has likely already swapped stacks to the Dashboard.
+    } catch (error) {
+      // Fallback
+      if (navigation.canGoBack()) {
+        navigation.goBack();
+      }
     }
   };
 
@@ -61,16 +70,17 @@ export function FaceRegistrationScreen({ navigation, route }: FaceRegistrationSc
         return;
       }
 
-      setCapturedImage(`data:image/jpg;base64,${photo.base64}`);
+      const prefixedImage = `data:image/jpg;base64,${photo.base64}`;
+      setCapturedImage(prefixedImage);
 
       // Register face with backend
-      const result = await ApiService.registerFace(photo.base64);
+      const result = await ApiService.registerFace(prefixedImage);
 
       if (result.success) {
         Alert.alert(
           'Face Registered',
           'Your face has been registered successfully. This will be used for daily verification.',
-          [{ text: 'OK', onPress: handleSuccess }]
+          [{ text: 'OK', onPress: () => handleSuccess() }]
         );
       } else {
         Alert.alert('Registration Failed', result.message || 'Please try again.');
@@ -112,7 +122,7 @@ export function FaceRegistrationScreen({ navigation, route }: FaceRegistrationSc
         <TouchableOpacity style={styles.permissionButton} onPress={requestPermission}>
           <Text style={styles.permissionButtonText}>Grant Permission</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.cancelButton} onPress={() => navigation.goBack()}>
+        <TouchableOpacity style={styles.cancelButton} onPress={() => navigation.canGoBack() && navigation.goBack()}>
           <Text style={styles.cancelButtonText}>Cancel</Text>
         </TouchableOpacity>
       </View>
@@ -123,14 +133,15 @@ export function FaceRegistrationScreen({ navigation, route }: FaceRegistrationSc
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+        <TouchableOpacity onPress={() => navigation.canGoBack() && navigation.goBack()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color="#fff" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Register Your Face</Text>
         <View style={{ width: 40 }} />
       </View>
 
-      <CameraView ref={cameraRef} style={styles.camera} facing={facing}>
+      <View style={styles.cameraContainer}>
+        <CameraView ref={cameraRef} style={styles.camera} facing={facing} />
         <View style={styles.overlay}>
           {/* Face guide oval */}
           <View style={styles.faceGuideContainer}>
@@ -142,7 +153,7 @@ export function FaceRegistrationScreen({ navigation, route }: FaceRegistrationSc
             </Text>
           </View>
         </View>
-      </CameraView>
+      </View>
 
       {/* Tips */}
       <View style={styles.tipsContainer}>
@@ -185,15 +196,15 @@ export function FaceRegistrationScreen({ navigation, route }: FaceRegistrationSc
           )}
         </TouchableOpacity>
 
-        <TouchableOpacity 
-          style={styles.skipButton} 
+        <TouchableOpacity
+          style={styles.skipButton}
           onPress={() => {
             Alert.alert(
               'Skip Face Registration?',
               'You can register your face later from the profile settings. Face verification will be required for check-in.',
               [
                 { text: 'Cancel', style: 'cancel' },
-                { text: 'Skip', onPress: () => navigation.goBack() },
+                { text: 'Skip', onPress: () => navigation.canGoBack() && navigation.goBack() },
               ]
             );
           }}
@@ -235,12 +246,16 @@ const styles = StyleSheet.create({
     marginTop: 16,
     fontSize: 16,
   },
-  camera: {
+  cameraContainer: {
     flex: 1,
     maxHeight: 400,
+    position: 'relative',
+  },
+  camera: {
+    ...StyleSheet.absoluteFillObject,
   },
   overlay: {
-    flex: 1,
+    ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0,0,0,0.3)',
     justifyContent: 'center',
     alignItems: 'center',
