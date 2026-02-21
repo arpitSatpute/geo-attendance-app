@@ -261,6 +261,7 @@ public class UserController {
         if (user.getManager() != null) {
             dto.setManagerName(user.getManager().getFirstName() + " " + user.getManager().getLastName());
         }
+        dto.setCompanyEmail(user.getCompanyEmail());
         return dto;
     }
 
@@ -277,6 +278,7 @@ public class UserController {
         private String teamId;
         private String managerId;
         private String managerName;
+        private String companyEmail;
         
         public UserDto() {}
         
@@ -312,5 +314,8 @@ public class UserController {
 
         public String getManagerName() { return managerName; }
         public void setManagerName(String managerName) { this.managerName = managerName; }
+
+        public String getCompanyEmail() { return companyEmail; }
+        public void setCompanyEmail(String companyEmail) { this.companyEmail = companyEmail; }
     }
 }

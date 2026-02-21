@@ -29,6 +29,9 @@ public class User {
     
     private String password;
     
+    @Indexed
+    private String companyEmail;
+    
     private String firstName;
     
     private String lastName;

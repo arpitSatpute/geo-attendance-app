@@ -30,13 +30,16 @@ public class SalaryService {
     private final SalaryRepository salaryRepository;
     private final AttendanceRepository attendanceRepository;
     private final UserRepository userRepository;
+    private final NotificationService notificationService;
 
     public SalaryService(SalaryRepository salaryRepository,
                          AttendanceRepository attendanceRepository,
-                         UserRepository userRepository) {
+                         UserRepository userRepository,
+                         NotificationService notificationService) {
         this.salaryRepository = salaryRepository;
         this.attendanceRepository = attendanceRepository;
         this.userRepository = userRepository;
+        this.notificationService = notificationService;
     }
 
     @Transactional
@@ -129,6 +132,8 @@ public class SalaryService {
         
         salary = salaryRepository.save(salary);
         
+        notificationService.sendSalaryUpdateNotification(user, monthStr, netSalary, false);
+        
         log.info("Salary calculated successfully for user: {} - Net Salary: {}", user.getEmail(), netSalary);
         
         return SalaryResponse.fromEntity(salary);
@@ -167,6 +172,11 @@ public class SalaryService {
         salary.setApprovedAt(LocalDateTime.now());
         
         salary = salaryRepository.save(salary);
+        
+        User user = userRepository.findById(salary.getUserId()).orElse(null);
+        if (user != null) {
+            notificationService.sendSalaryUpdateNotification(user, salary.getMonth(), salary.getNetSalary(), true);
+        }
         
         log.info("Salary approved for user: {} by: {}", salary.getUserEmail(), approvedBy);
         

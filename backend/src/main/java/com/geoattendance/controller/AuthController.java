@@ -23,6 +23,8 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import com.geoattendance.service.NotificationService;
+import com.geoattendance.service.AuthenticationService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -47,6 +49,12 @@ public class AuthController {
 
     @Autowired
     private TeamService teamService;
+
+    @Autowired
+    private NotificationService notificationService;
+
+    @Autowired
+    private AuthenticationService authenticationService;
 
     @PostMapping("/login")
     public ResponseEntity<?> authenticateUser(@Valid @RequestBody AuthRequest authRequest) {
@@ -92,6 +100,7 @@ public class AuthController {
         User user = new User();
         user.setEmail(registerRequest.getEmail());
         user.setPassword(passwordEncoder.encode(registerRequest.getPassword()));
+        user.setCompanyEmail(registerRequest.getCompanyEmail());
         user.setFirstName(registerRequest.getFirstName());
         user.setLastName(registerRequest.getLastName());
         user.setPhone(registerRequest.getPhone());
@@ -102,6 +111,18 @@ public class AuthController {
         user.setUpdatedAt(LocalDateTime.now());
 
         userRepository.save(user);
+
+        // Send welcome email
+        try {
+            notificationService.sendEmailNotification(
+                user.getEmail(),
+                "Welcome to GeoAttendance Pro",
+                String.format("Hello %s,\n\nWelcome to GeoAttendance Pro! Your account has been created successfully with the role of %s.\n\nYou can now log in using your email and password.", 
+                    user.getFirstName(), user.getRole())
+            );
+        } catch (Exception e) {
+            logger.error("Failed to send welcome email to {}: {}", user.getEmail(), e.getMessage());
+        }
 
         Map<String, String> response = new HashMap<>();
         response.put("message", "User registered successfully");
@@ -114,6 +135,34 @@ public class AuthController {
         Map<String, String> response = new HashMap<>();
         response.put("message", "Logout successful");
         return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/change-password")
+    public ResponseEntity<?> changePassword(@RequestBody Map<String, String> payload) {
+        try {
+            User currentUser = authenticationService.getCurrentUser();
+            String oldPassword = payload.get("oldPassword");
+            String newPassword = payload.get("newPassword");
+
+            if (!passwordEncoder.matches(oldPassword, currentUser.getPassword())) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Incorrect old password"));
+            }
+
+            currentUser.setPassword(passwordEncoder.encode(newPassword));
+            currentUser.setUpdatedAt(LocalDateTime.now());
+            userRepository.save(currentUser);
+
+            // Send confirmation email
+            notificationService.sendEmailNotification(
+                currentUser.getEmail(),
+                "Password Changed Successfully",
+                "Your account password has been changed. If you did not perform this action, please contact support immediately."
+            );
+
+            return ResponseEntity.ok(Map.of("message", "Password changed successfully"));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", e.getMessage()));
+        }
     }
 
     @GetMapping("/me")
@@ -142,6 +191,7 @@ public class AuthController {
         userDto.put("active", user.isActive());
         userDto.put("department", user.getDepartment());
         userDto.put("baseSalary", user.getBaseSalary());
+        userDto.put("companyEmail", user.getCompanyEmail());
         
         // Include manager information if available
         if (user.getManager() != null) {
@@ -164,6 +214,19 @@ public class AuthController {
                 teamDto.put("name", team.getName());
                 teamDto.put("managerId", team.getManagerId());
                 userDto.put("team", teamDto);
+                
+                // If manager info is missing, fetch from team's manager
+                if (!userDto.containsKey("manager") && team.getManagerId() != null) {
+                    userRepository.findById(team.getManagerId()).ifPresent(manager -> {
+                        Map<String, Object> managerDto = new HashMap<>();
+                        managerDto.put("id", manager.getId());
+                        managerDto.put("firstName", manager.getFirstName());
+                        managerDto.put("lastName", manager.getLastName());
+                        managerDto.put("email", manager.getEmail());
+                        managerDto.put("phone", manager.getPhone());
+                        userDto.put("manager", managerDto);
+                    });
+                }
             }
         }
         

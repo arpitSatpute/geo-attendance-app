@@ -128,4 +128,22 @@ public class TeamController {
             "checkOutBufferMinutes", t.getCheckOutBufferMinutes()
         ));
     }
+    @DeleteMapping("/{teamId}")
+    @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN')")
+    public ResponseEntity<?> deleteTeam(@PathVariable String teamId) {
+        try {
+            String managerId = authenticationService.getCurrentUser().getId();
+            Optional<Team> existingTeam = teamService.getTeamById(teamId);
+            if (existingTeam.isEmpty()) {
+                return ResponseEntity.notFound().build();
+            }
+            if (!existingTeam.get().getManagerId().equals(managerId)) {
+                return ResponseEntity.status(403).body(Map.of("error", "You are not the manager of this team"));
+            }
+            teamService.deleteTeam(teamId);
+            return ResponseEntity.ok(Map.of("message", "Team deleted successfully"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
 }

@@ -19,10 +19,11 @@ public class AttendanceScheduler {
      */
     @Scheduled(cron = "0 */5 * * * *") // Every 5 minutes
     public void markAbsentEmployees() {
-        log.info("Running scheduled job: markAbsentEmployees");
+        log.info("Running scheduled job: marks & auto check-outs");
         try {
             attendanceService.markAbsentEmployees();
-            log.info("Completed scheduled job: markAbsentEmployees");
+            attendanceService.autoCheckOutPastWorkHours();
+            log.info("Completed scheduled job: marks & auto check-outs");
         } catch (Exception e) {
             log.error("Error in markAbsentEmployees scheduled job: {}", e.getMessage(), e);
         }

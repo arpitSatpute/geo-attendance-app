@@ -9,6 +9,8 @@ import com.geoattendance.repository.GeofenceRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.CacheEvict;
 import java.time.LocalTime;
 import java.util.List;
 import java.util.Optional;
@@ -20,15 +22,18 @@ public class TeamService {
     private final UserRepository userRepository;
     private final GeofenceRepository geofenceRepository;
 
+    @Cacheable(value = "teams", key = "'manager:' + #managerId")
     public List<Team> getTeamsByManager(String managerId) {
         return teamRepository.findByManagerId(managerId);
     }
 
+    @Cacheable(value = "teams", key = "#teamId")
     public Optional<Team> getTeamById(String teamId) {
         return teamRepository.findById(teamId);
     }
 
     @Transactional
+    @CacheEvict(value = "teams", allEntries = true)
     public Team createTeam(String name, String managerId) {
         Team team = Team.builder()
                 .name(name)
@@ -45,6 +50,7 @@ public class TeamService {
 
 
     @Transactional
+    @CacheEvict(value = "teams", allEntries = true)
     public Team addEmployeeToTeamByEmail(String teamId, String employeeEmail) {
         Team team = teamRepository.findById(teamId).orElseThrow();
         User employee = userRepository.findByEmail(employeeEmail)
@@ -58,11 +64,17 @@ public class TeamService {
         if (!team.getEmployeeIds().contains(employee.getId())) {
             team.getEmployeeIds().add(employee.getId());
             teamRepository.save(team);
+            
+            // Link user to team and manager
+            employee.setTeamId(teamId);
+            employee.setManagerId(team.getManagerId());
+            userRepository.save(employee);
         }
         return team;
     }
 
     @Transactional
+    @CacheEvict(value = "teams", allEntries = true)
     public Team setGeofenceForTeam(String teamId, String geofenceId) {
         Team team = teamRepository.findById(teamId).orElseThrow();
         team.setGeofenceId(geofenceId);
@@ -70,6 +82,7 @@ public class TeamService {
     }
 
     @Transactional
+    @CacheEvict(value = "teams", allEntries = true)
     public Team removeEmployeeFromTeam(String teamId, String employeeId) {
         Team team = teamRepository.findById(teamId).orElseThrow();
         if (team.getEmployeeIds() != null && team.getEmployeeIds().contains(employeeId)) {
@@ -95,6 +108,7 @@ public class TeamService {
     }
 
     @Transactional
+    @CacheEvict(value = "teams", allEntries = true)
     public Team setWorkHours(String teamId, LocalTime workStartTime, LocalTime workEndTime,
                              LocalTime checkInDeadline, LocalTime checkOutAllowedFrom,
                              Integer checkInBufferMinutes, Integer checkOutBufferMinutes) {
@@ -114,5 +128,10 @@ public class TeamService {
         }
         
         return teamRepository.save(team);
+    }
+    @Transactional
+    @CacheEvict(value = "teams", allEntries = true)
+    public void deleteTeam(String teamId) {
+        teamRepository.deleteById(teamId);
     }
 }

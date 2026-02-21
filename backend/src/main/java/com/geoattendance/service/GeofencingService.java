@@ -9,6 +9,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.CacheEvict;
 
 import java.util.List;
 import java.util.Map;
@@ -140,24 +142,18 @@ public class GeofencingService {
         return false;
     }
     
-    /**
-     * Get all geofences (including inactive)
-     */
-    public List<Geofence> getAllGeofences() {
-        return geofenceRepository.findAll();
+    @Cacheable(value = "geofences", key = "'manager:' + #userId")
+    public List<Geofence> getGeofencesByManager(String userId) {
+        return geofenceRepository.findByCreatedById(userId);
+    }
+
+    @Cacheable(value = "geofences", key = "'active:manager:' + #userId")
+    public List<Geofence> getActiveGeofencesByManager(String userId) {
+        return geofenceRepository.findByCreatedByIdAndIsActiveTrue(userId);
     }
     
-    /**
-     * Get all active geofences
-     */
-    public List<Geofence> getAllActiveGeofences() {
-        return geofenceRepository.findByIsActiveTrue();
-    }
-    
-    /**
-     * Create a new geofence
-     */
     @Transactional
+    @CacheEvict(value = "geofences", allEntries = true)
     public Geofence createGeofence(Geofence geofence) {
         log.info("Creating geofence: {}", geofence.getName());
         
@@ -176,6 +172,7 @@ public class GeofencingService {
      * Update an existing geofence
      */
     @Transactional
+    @CacheEvict(value = "geofences", allEntries = true)
     public Geofence updateGeofence(String id, Geofence geofenceUpdate) {
         Geofence geofence = geofenceRepository.findById(id)
             .orElseThrow(() -> new RuntimeException("Geofence not found"));
@@ -206,6 +203,7 @@ public class GeofencingService {
      * Delete a geofence
      */
     @Transactional
+    @CacheEvict(value = "geofences", allEntries = true)
     public void deleteGeofence(String id) {
         geofenceRepository.deleteById(id);
         log.info("Deleted geofence: {}", id);
@@ -216,7 +214,21 @@ public class GeofencingService {
      */
     @Transactional
     public void handleGeofenceEvent(User user, Double latitude, Double longitude, Float accuracy) {
-        Geofence currentGeofence = findGeofenceContainingPoint(latitude, longitude);
+        String managerId = user.getManagerId();
+        Geofence currentGeofence = null;
+        
+        if (managerId != null) {
+            List<Geofence> managerGeofences = geofenceRepository.findByCreatedByIdAndIsActiveTrue(managerId);
+            for (Geofence g : managerGeofences) {
+                boolean inside = g.getGeofenceType() == Geofence.GeofenceType.CIRCLE
+                    ? isPointInCircleGeofence(latitude, longitude, g)
+                    : isPointInPolygonGeofence(latitude, longitude, g);
+                if (inside) {
+                    currentGeofence = g;
+                    break;
+                }
+            }
+        }
         
         // Get the latest attendance record for the user today
 
@@ -239,7 +251,7 @@ public class GeofencingService {
                 attendanceRepository.save(record);
                 log.info("User {} checked in at geofence {}", user.getId(), currentGeofence.getId());
                 
-                notificationService.sendCheckInNotification(user, currentGeofence);
+                notificationService.sendCheckInNotification(user, currentGeofence.getName());
             }
         } else {
             // User is outside all geofences
@@ -261,6 +273,7 @@ public class GeofencingService {
     /**
      * Get a geofence by its ID
      */
+    @Cacheable(value = "geofences", key = "#id")
     public Geofence getGeofenceById(String id) {
         return geofenceRepository.findById(id)
             .orElseThrow(() -> new RuntimeException("Geofence not found: " + id));

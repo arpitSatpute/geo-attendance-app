@@ -15,6 +15,8 @@ public class RegisterRequest {
     @Size(min = 6, message = "Password must be at least 6 characters")
     private String password;
 
+    private String companyEmail;
+
     @NotBlank(message = "First name is required")
     private String firstName;
 
@@ -22,8 +24,14 @@ public class RegisterRequest {
     private String lastName;
 
     private String phone;
+    
+    private String phoneNumber; // Support both phone and phoneNumber from frontend
 
     private String role;
+    
+    private String department;
+    
+    private String position;
 
     private Double baseSalary;
 }

@@ -37,7 +37,21 @@ public class GeofenceController {
     @GetMapping
     @PreAuthorize("hasAnyRole('EMPLOYEE', 'MANAGER', 'ADMIN')")
     public ResponseEntity<List<Geofence>> getAllGeofences() {
-        List<Geofence> geofences = geofencingService.getAllGeofences();
+        User currentUser = authenticationService.getCurrentUser();
+        List<Geofence> geofences;
+        
+        if ("ADMIN".equalsIgnoreCase(currentUser.getRole()) || "MANAGER".equalsIgnoreCase(currentUser.getRole())) {
+            geofences = geofencingService.getGeofencesByManager(currentUser.getId());
+        } else if ("EMPLOYEE".equalsIgnoreCase(currentUser.getRole())) {
+            if (currentUser.getManagerId() != null) {
+                geofences = geofencingService.getActiveGeofencesByManager(currentUser.getManagerId());
+            } else {
+                geofences = List.of();
+            }
+        } else {
+            geofences = List.of();
+        }
+        
         return ResponseEntity.ok(geofences);
     }
 
@@ -87,16 +101,27 @@ public class GeofenceController {
         @PathVariable String id,
         @RequestBody Geofence geofenceUpdate
     ) {
+        User currentUser = authenticationService.getCurrentUser();
+        Geofence existing = geofencingService.getGeofenceById(id);
+        
+        if (!currentUser.getId().equals(existing.getCreatedById()) && !"ADMIN".equalsIgnoreCase(currentUser.getRole())) {
+            return ResponseEntity.status(403).build();
+        }
+        
         Geofence updated = geofencingService.updateGeofence(id, geofenceUpdate);
         return ResponseEntity.ok(updated);
     }
 
-    /**
-     * Delete a geofence
-     */
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN')")
     public ResponseEntity<Void> deleteGeofence(@PathVariable String id) {
+        User currentUser = authenticationService.getCurrentUser();
+        Geofence existing = geofencingService.getGeofenceById(id);
+        
+        if (!currentUser.getId().equals(existing.getCreatedById()) && !"ADMIN".equalsIgnoreCase(currentUser.getRole())) {
+            return ResponseEntity.status(403).build();
+        }
+        
         geofencingService.deleteGeofence(id);
         return ResponseEntity.noContent().build();
     }
@@ -130,8 +155,32 @@ public class GeofenceController {
         @RequestParam Double latitude,
         @RequestParam Double longitude
     ) {
-        Geofence geofence = geofencingService.findGeofenceContainingPoint(latitude, longitude);
-        return ResponseEntity.ok(geofence);
+        User currentUser = authenticationService.getCurrentUser();
+        String managerId = null;
+        
+        if ("MANAGER".equalsIgnoreCase(currentUser.getRole()) || "ADMIN".equalsIgnoreCase(currentUser.getRole())) {
+            managerId = currentUser.getId();
+        } else if ("EMPLOYEE".equalsIgnoreCase(currentUser.getRole())) {
+            managerId = currentUser.getManagerId();
+        }
+        
+        if (managerId == null) {
+            return ResponseEntity.ok(null);
+        }
+        
+        List<Geofence> myActiveGeofences = geofencingService.getActiveGeofencesByManager(managerId);
+        Geofence found = null;
+        for (Geofence g : myActiveGeofences) {
+            boolean inside = g.getGeofenceType() == Geofence.GeofenceType.CIRCLE
+                ? geofencingService.isPointInCircleGeofence(latitude, longitude, g)
+                : geofencingService.isPointInPolygonGeofence(latitude, longitude, g);
+            if (inside) {
+                found = g;
+                break;
+            }
+        }
+        
+        return ResponseEntity.ok(found);
     }
 
     /**

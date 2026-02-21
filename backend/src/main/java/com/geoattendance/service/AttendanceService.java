@@ -277,6 +277,7 @@ public class AttendanceService {
         }
 
         log.info("Manual check-in for user {} at geofence {}", user.getId(), geofence.getName());
+        notificationService.sendCheckInNotification(user, geofence.getName());
         return record;
     }
 
@@ -315,7 +316,9 @@ public class AttendanceService {
         record.setStatus(AttendanceRecord.AttendanceStatus.CHECKED_OUT);
 
         log.info("Manual check-out for user {}", user.getId());
-        return attendanceRepository.save(record);
+        AttendanceRecord saved = attendanceRepository.save(record);
+        notificationService.sendCheckOutNotification(user);
+        return saved;
     }
 
     /**
@@ -358,6 +361,7 @@ public class AttendanceService {
                 todayRecord.setCheckInLongitude(longitude);
                 todayRecord.setLocationAccuracyMeters(accuracy);
                 attendanceRepository.save(todayRecord);
+                notificationService.sendCheckInNotification(user, geofence.getName());
                 log.info("Auto check-in for user {} at geofence {}", user.getId(), geofence.getName());
                 return new LocationUpdateResult("AUTO_CHECKED_IN", 
                     "You are back in the work area. Checked in automatically.", geofence.getName());
@@ -373,6 +377,7 @@ public class AttendanceService {
                 todayRecord.setLocationAccuracyMeters(accuracy);
                 todayRecord.setStatus(AttendanceRecord.AttendanceStatus.CHECKED_OUT);
                 attendanceRepository.save(todayRecord);
+                notificationService.sendCheckOutNotification(user);
                 log.info("Auto check-out for user {} - left geofence area", user.getId());
                 return new LocationUpdateResult("AUTO_CHECKED_OUT", 
                     "You left the work area. Checked out automatically.", null);
@@ -453,19 +458,34 @@ public class AttendanceService {
     }
 
     /**
-     * Auto check-out users who are still checked in after work hours
+     * Auto check-out users who are still checked in after their team's work hours
      */
     @Transactional
-    public void autoCheckOutUsers(LocalTime checkOutTime) {
-        List<AttendanceRecord> activeRecords = attendanceRepository.findByCheckOutTimeIsNull();
+    public void autoCheckOutPastWorkHours() {
+        LocalDateTime startOfDay = LocalDateTime.of(LocalDate.now(), LocalTime.MIN);
+        LocalDateTime endOfDay = LocalDateTime.of(LocalDate.now(), LocalTime.MAX);
+        LocalTime now = LocalTime.now();
 
-        for (AttendanceRecord record : activeRecords) {
-            LocalDateTime checkOutDateTime = LocalDateTime.of(LocalDate.now(), checkOutTime);
-            record.setCheckOutTime(checkOutDateTime);
-            record.setStatus(AttendanceRecord.AttendanceStatus.CHECKED_OUT);
-            attendanceRepository.save(record);
+        List<Team> teams = teamRepository.findAll();
+        for (Team team : teams) {
+            if (team.getWorkEndTime() == null || team.getEmployeeIds() == null) continue;
 
-            log.info("Auto checked out user {}", record.getUserId());
+            if (now.isAfter(team.getWorkEndTime())) {
+                for (String employeeId : team.getEmployeeIds()) {
+                    List<AttendanceRecord> records = attendanceRepository
+                        .findByUserIdAndCheckInTimeBetween(employeeId, startOfDay, endOfDay);
+
+                    for (AttendanceRecord record : records) {
+                        if (record.getCheckOutTime() == null && record.getStatus() == AttendanceRecord.AttendanceStatus.CHECKED_IN) {
+                            // Set checkout time exactly to their work end time
+                            record.setCheckOutTime(LocalDateTime.of(LocalDate.now(), team.getWorkEndTime()));
+                            record.setStatus(AttendanceRecord.AttendanceStatus.CHECKED_OUT);
+                            attendanceRepository.save(record);
+                            log.info("Auto checked out employee {} at the end of work hours ({})", employeeId, team.getWorkEndTime());
+                        }
+                    }
+                }
+            }
         }
     }
 

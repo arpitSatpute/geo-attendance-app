@@ -4,6 +4,8 @@ import com.geoattendance.entity.Leave;
 import com.geoattendance.entity.User;
 import com.geoattendance.repository.LeaveRepository;
 import com.geoattendance.repository.UserRepository;
+import com.geoattendance.repository.TeamRepository;
+import com.geoattendance.entity.Team;
 import com.geoattendance.dto.LeaveRequest;
 import com.geoattendance.dto.LeaveResponse;
 import org.slf4j.Logger;
@@ -22,18 +24,23 @@ public class LeaveService {
 
     private final LeaveRepository leaveRepository;
     private final UserRepository userRepository;
+    private final TeamRepository teamRepository;
+    private final NotificationService notificationService;
 
-    public LeaveService(LeaveRepository leaveRepository, UserRepository userRepository) {
+    public LeaveService(LeaveRepository leaveRepository, UserRepository userRepository, 
+                        TeamRepository teamRepository, NotificationService notificationService) {
         this.leaveRepository = leaveRepository;
         this.userRepository = userRepository;
+        this.teamRepository = teamRepository;
+        this.notificationService = notificationService;
     }
 
     @Transactional
-    public LeaveResponse applyLeave(String userEmail, LeaveRequest request) {
-        log.info("User {} applying for leave from {} to {}", userEmail, request.getStartDate(), request.getEndDate());
+    public LeaveResponse applyLeave(String userId, LeaveRequest request) {
+        log.info("User {} applying for leave from {} to {}", userId, request.getStartDate(), request.getEndDate());
         
-        User user = userRepository.findByEmail(userEmail)
-                .orElseThrow(() -> new RuntimeException("User not found with email: " + userEmail));
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found with id: " + userId));
         
         Leave leave = Leave.builder()
                 .userId(user.getId())
@@ -47,12 +54,45 @@ public class LeaveService {
         leave = leaveRepository.save(leave);
         
         log.info("Leave application created with ID: {}", leave.getId());
+
+        // Notify manager
+        String managerId = user.getManagerId();
+        if (managerId == null && user.getManager() != null) {
+            managerId = user.getManager().getId();
+        }
+        
+        // If still null, try finding via team
+        if (managerId == null) {
+            List<Team> teams = teamRepository.findByEmployeeIdsContains(userId);
+            if (!teams.isEmpty()) {
+                managerId = teams.get(0).getManagerId();
+            }
+        }
+
+        if (managerId != null) {
+            log.info("Notifying manager with ID {} about leave request from {}", managerId, userId);
+            String message = String.format("%s applied for %s leave (%s to %s)", 
+                user.getFirstName() + " " + user.getLastName(), 
+                leave.getLeaveType(), leave.getStartDate(), leave.getEndDate());
+            notificationService.sendNotification(managerId, "LEAVE_REQUEST", "New Leave Request", message);
+            
+            // Also send email to manager if possible
+            if (user.getManager() != null) {
+                notificationService.sendEmailNotification(user.getManager().getEmail(), "New Leave Request", message);
+            } else {
+                userRepository.findById(managerId).ifPresent(m -> 
+                    notificationService.sendEmailNotification(m.getEmail(), "New Leave Request", message)
+                );
+            }
+        } else {
+            log.warn("No manager found to notify for user {}", userId);
+        }
         
         return LeaveResponse.fromEntity(leave, user.getEmail(), user.getFirstName() + " " + user.getLastName());
     }
 
-    public List<LeaveResponse> getMyLeaves(String userEmail) {
-        User user = userRepository.findByEmail(userEmail).orElse(null);
+    public List<LeaveResponse> getMyLeaves(String userId) {
+        User user = userRepository.findById(userId).orElse(null);
         if (user == null) {
             return List.of();
         }
@@ -103,6 +143,9 @@ public class LeaveService {
         leave = leaveRepository.save(leave);
         
         User user = userRepository.findById(leave.getUserId()).orElse(null);
+        if (user != null) {
+            notificationService.sendLeaveApprovalNotification(user, true);
+        }
         String email = user != null ? user.getEmail() : "";
         String name = user != null ? user.getFirstName() + " " + user.getLastName() : "";
         
@@ -123,6 +166,9 @@ public class LeaveService {
         leave = leaveRepository.save(leave);
         
         User user = userRepository.findById(leave.getUserId()).orElse(null);
+        if (user != null) {
+            notificationService.sendLeaveApprovalNotification(user, false);
+        }
         String email = user != null ? user.getEmail() : "";
         String name = user != null ? user.getFirstName() + " " + user.getLastName() : "";
         

@@ -12,4 +12,6 @@ public interface GeofenceRepository extends MongoRepository<Geofence, String> {
     List<Geofence> findByIsActiveTrue();
     
     List<Geofence> findByCreatedById(String userId);
+
+    List<Geofence> findByCreatedByIdAndIsActiveTrue(String userId);
 }
