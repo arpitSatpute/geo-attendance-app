@@ -34,7 +34,7 @@ if [ ! -f "pom.xml" ]; then
 fi
 
 echo "📦 Building backend..."
-./mvnw clean install -DskipTests
+mvn clean install -DskipTests
 
 if [ $? -ne 0 ]; then
     echo "❌ Build failed. Please check the errors above."
@@ -51,4 +51,4 @@ echo ""
 echo "Press Ctrl+C to stop the server"
 echo ""
 
-./mvnw spring-boot:run
+mvn spring-boot:run
