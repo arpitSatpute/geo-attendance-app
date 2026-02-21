@@ -23,6 +23,7 @@ const AddUserScreen = ({ navigation }: any) => {
     role: 'EMPLOYEE',
     department: '',
     position: '',
+    companyEmail: '',
   });
   const [loading, setLoading] = useState(false);
 
@@ -60,6 +61,7 @@ const AddUserScreen = ({ navigation }: any) => {
         role: formData.role,
         department: formData.department,
         position: formData.position,
+        companyEmail: formData.companyEmail,
       });
 
       Alert.alert(
@@ -128,6 +130,17 @@ const AddUserScreen = ({ navigation }: any) => {
               onChangeText={(text) => setFormData({ ...formData, email: text })}
               placeholder="john.doe@example.com"
               keyboardType="email-address"
+              autoCapitalize="none"
+            />
+          </View>
+
+          <View style={styles.inputGroup}>
+            <Text style={styles.inputLabel}>Company Email *</Text>
+            <TextInput
+              style={styles.input}
+              value={formData.companyEmail}
+              onChangeText={(text) => setFormData({ ...formData, companyEmail: text })}
+              placeholder="company-domain.com"
               autoCapitalize="none"
             />
           </View>

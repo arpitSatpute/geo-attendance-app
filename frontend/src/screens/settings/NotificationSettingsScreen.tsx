@@ -66,9 +66,6 @@ const NotificationSettingsScreen = ({ navigation }: any) => {
   return (
     <ScrollView style={styles.container}>
       <View style={styles.content}>
-        <View style={styles.iconContainer}>
-          <Text style={styles.icon}>🔔</Text>
-        </View>
 
         <Text style={styles.title}>Notification Settings</Text>
         <Text style={styles.subtitle}>
@@ -233,13 +230,6 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 20,
-  },
-  iconContainer: {
-    alignItems: 'center',
-    marginVertical: 20,
-  },
-  icon: {
-    fontSize: 80,
   },
   title: {
     fontSize: 24,

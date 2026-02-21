@@ -12,6 +12,7 @@ const RegisterScreen = ({ navigation }: any) => {
     phone: '',
     role: 'EMPLOYEE', // Default role
     baseSalary: '',
+    companyEmail: '',
   });
   const [loading, setLoading] = useState(false);
 
@@ -110,6 +111,15 @@ const RegisterScreen = ({ navigation }: any) => {
         value={formData.phone}
         onChangeText={(text) => setFormData({ ...formData, phone: text })}
         keyboardType="phone-pad"
+      />
+
+      <TextInput
+        style={styles.input}
+        placeholder="Company Email *"
+        value={formData.companyEmail}
+        onChangeText={(text) => setFormData({ ...formData, companyEmail: text })}
+        keyboardType="email-address"
+        autoCapitalize="none"
       />
 
       <TextInput

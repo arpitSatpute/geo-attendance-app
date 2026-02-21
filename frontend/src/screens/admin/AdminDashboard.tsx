@@ -9,7 +9,9 @@ import {
   RefreshControl,
   Alert,
   TextInput,
+  Dimensions,
 } from 'react-native';
+import { PieChart, BarChart } from 'react-native-chart-kit';
 import { useNavigation } from '@react-navigation/native';
 import { AuthService } from '../../services/AuthService';
 import { ApiService } from '../../services/ApiService';
@@ -26,7 +28,7 @@ const AdminDashboard = () => {
 
   useEffect(() => {
     loadData();
-    
+
     // Update clock every second
     const timer = setInterval(() => {
       setCurrentTime(new Date());
@@ -43,7 +45,7 @@ const AdminDashboard = () => {
         ApiService.getAllUsers().catch(() => []),
         ApiService.getAllGeofences().catch(() => []),
       ]);
-      
+
       setUser(userData);
       setUsers(allUsers || []);
       setGeofences(allGeofences || []);
@@ -93,7 +95,7 @@ const AdminDashboard = () => {
     );
   };
 
-  const filteredUsers = users.filter(u => 
+  const filteredUsers = users.filter(u =>
     u.firstName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     u.lastName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     u.email?.toLowerCase().includes(searchQuery.toLowerCase())
@@ -136,14 +138,14 @@ const AdminDashboard = () => {
       {/* Header Section */}
       <View style={styles.header}>
         <Text style={styles.greeting}>{getGreeting()},</Text>
-        <Text style={styles.userName}>{user?.firstName || 'Admin'}</Text>
+        <Text style={styles.headerUserName}>{user?.firstName || 'Admin'}</Text>
         <Text style={styles.role}>System Administrator</Text>
         <Text style={styles.clock}>
-          {currentTime.toLocaleTimeString('en-US', { 
-            hour: '2-digit', 
+          {currentTime.toLocaleTimeString('en-US', {
+            hour: '2-digit',
             minute: '2-digit',
             second: '2-digit',
-            hour12: true 
+            hour12: true
           })}
         </Text>
       </View>
@@ -151,6 +153,28 @@ const AdminDashboard = () => {
       {/* System Statistics */}
       <View style={styles.statsContainer}>
         <Text style={styles.sectionTitle}>System Overview</Text>
+
+        {/* Charts Section */}
+        <View style={styles.chartsRow}>
+          <View style={styles.chartCard}>
+            <Text style={styles.chartTitle}>User Roles</Text>
+            <PieChart
+              data={[
+                { name: 'Employees', population: userStats.employees, color: '#2196F3', legendFontColor: '#7F7F7F' },
+                { name: 'Managers', population: userStats.managers, color: '#FF9800', legendFontColor: '#7F7F7F' },
+                { name: 'Admins', population: userStats.admins, color: '#F44336', legendFontColor: '#7F7F7F' },
+              ]}
+              width={Dimensions.get('window').width - 40}
+              height={180}
+              chartConfig={{ color: (opacity = 1) => `rgba(0, 0, 0, ${opacity})` }}
+              accessor="population"
+              backgroundColor="transparent"
+              paddingLeft="15"
+              absolute
+            />
+          </View>
+        </View>
+
         <View style={styles.statsGrid}>
           <View style={[styles.statCard, styles.primaryCard]}>
             <Text style={styles.statNumber}>{userStats.total}</Text>
@@ -187,14 +211,14 @@ const AdminDashboard = () => {
       <View style={styles.actionsContainer}>
         <Text style={styles.sectionTitle}>Quick Actions</Text>
         <View style={styles.actionsGrid}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.actionButton}
             onPress={() => navigation.navigate('AddUser')}
           >
             <Text style={styles.actionIcon}>👤</Text>
             <Text style={styles.actionText}>Add User</Text>
           </TouchableOpacity>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.actionButton}
             onPress={() => Alert.alert('Coming Soon', 'System settings feature')}
           >
@@ -203,14 +227,14 @@ const AdminDashboard = () => {
           </TouchableOpacity>
         </View>
         <View style={styles.actionsGrid}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.actionButton}
             onPress={() => navigation.navigate('Reports')}
           >
             <Text style={styles.actionIcon}>📊</Text>
             <Text style={styles.actionText}>Reports</Text>
           </TouchableOpacity>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.actionButton}
             onPress={() => Alert.alert('Coming Soon', 'Backup data feature')}
           >
@@ -240,7 +264,7 @@ const AdminDashboard = () => {
             <View key={index} style={styles.userCard}>
               <View style={styles.userInfo}>
                 <View>
-                  <Text style={styles.userName}>
+                  <Text style={styles.cardUserName}>
                     {u.firstName} {u.lastName}
                   </Text>
                   <Text style={styles.userEmail}>{u.email}</Text>
@@ -257,13 +281,13 @@ const AdminDashboard = () => {
                 </View>
               </View>
               <View style={styles.userActions}>
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={styles.iconButton}
                   onPress={() => navigation.navigate('AddUser')}
                 >
                   <Text style={styles.iconButtonText}>✏️</Text>
                 </TouchableOpacity>
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={styles.iconButton}
                   onPress={() => handleDeleteUser(u.id, `${u.firstName} ${u.lastName}`)}
                 >
@@ -322,7 +346,7 @@ const styles = StyleSheet.create({
     color: '#fff',
     opacity: 0.9,
   },
-  userName: {
+  headerUserName: {
     fontSize: 28,
     fontWeight: 'bold',
     color: '#fff',
@@ -349,6 +373,26 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginBottom: 15,
     color: '#333',
+  },
+  chartsRow: {
+    marginBottom: 20,
+  },
+  chartCard: {
+    backgroundColor: '#fff',
+    borderRadius: 15,
+    padding: 15,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  chartTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#666',
+    marginBottom: 10,
+    textAlign: 'center',
   },
   statsGrid: {
     flexDirection: 'row',
@@ -455,7 +499,7 @@ const styles = StyleSheet.create({
   userInfo: {
     flex: 1,
   },
-  userName: {
+  cardUserName: {
     fontSize: 16,
     fontWeight: '600',
     color: '#333',
