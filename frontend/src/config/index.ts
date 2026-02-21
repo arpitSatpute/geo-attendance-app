@@ -9,9 +9,9 @@ interface Config {
 // Get API URL from environment variables with fallbacks
 const getApiUrl = (): string => {
   // Check Expo constants first
-  const expoApiUrl = Constants.expoConfig?.extra?.apiUrl || 
-                     Constants.manifest?.extra?.apiUrl;
-  
+  const expoApiUrl = Constants.expoConfig?.extra?.apiUrl ||
+    Constants.manifest?.extra?.apiUrl;
+
   if (expoApiUrl) {
     return expoApiUrl;
   }
@@ -22,7 +22,7 @@ const getApiUrl = (): string => {
   }
 
   // Default fallback
-  return 'http://10.89.227.129:8080/api';
+  return 'http://192.168.1.5:8080/api';
 };
 
 const config: Config = {
@@ -31,4 +31,5 @@ const config: Config = {
   appVersion: process.env.EXPO_PUBLIC_APP_VERSION || '1.0.0',
 };
 
+export const API_URL = config.apiUrl;
 export default config;

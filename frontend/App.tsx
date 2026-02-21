@@ -3,7 +3,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Provider } from 'react-redux';
-import { store } from './src/store';
+import { store, loginSuccess, logout } from './src/store';
 import * as Location from 'expo-location';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -33,6 +33,9 @@ const Tab = createBottomTabNavigator();
 // Import face screens
 import FaceVerificationScreen from './src/screens/FaceVerificationScreen';
 import FaceRegistrationScreen from './src/screens/FaceRegistrationScreen';
+
+// Import components
+import NotificationBell from './src/components/NotificationBell';
 
 // Auth Stack
 const AuthStack = () => {
@@ -99,6 +102,7 @@ const EmployeeTabNavigator = () => {
         options={{
           tabBarLabel: 'Dashboard',
           headerTitle: 'GeoAttendance Pro',
+          headerRight: () => <NotificationBell />,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="home-outline" size={size} color={color} />
           ),
@@ -187,6 +191,7 @@ const ManagerTabNavigator = () => {
         options={{
           tabBarLabel: 'Dashboard',
           headerTitle: 'Team Overview',
+          headerRight: () => <NotificationBell />,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="grid-outline" size={size} color={color} />
           ),
@@ -274,6 +279,7 @@ const AdminTabNavigator = () => {
         options={{
           tabBarLabel: 'Dashboard',
           headerTitle: 'System Overview',
+          headerRight: () => <NotificationBell />,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="speedometer-outline" size={size} color={color} />
           ),
@@ -360,11 +366,12 @@ export default function App() {
           setIsLoggedIn(true);
           try {
             const user = await AuthService.getCurrentUser();
-            if (user?.role) {
+            if (user) {
               setUserRole(user.role);
+              // Sync with Redux
+              store.dispatch(loginSuccess({ user, token }));
             }
           } catch (userError) {
-            // If we can't get user from API, try local storage
             console.log('Could not fetch user from API, using cached data');
           }
         }
@@ -393,21 +400,29 @@ export default function App() {
         const isValid = await AuthService.isAuthenticated();
         if (isValid) {
           setIsLoggedIn(true);
-          // Only update user role if we don't have it yet
-          if (!userRole) {
-            const user = await AuthService.getCurrentUser();
-            if (user?.role) {
-              setUserRole(user.role);
+          // Always get user role, as it is cached locally and very fast!
+          // This avoids the stale closure bug that was preventing login navigation
+          const user = await AuthService.getCurrentUser();
+          if (user) {
+            setUserRole(user.role);
+            // Sync with Redux if not already in sync
+            const state = store.getState();
+            if (!state.auth.isAuthenticated || state.auth.user?.id !== user.id) {
+              store.dispatch(loginSuccess({ user, token }));
             }
           }
         } else {
           // Token expired
           setIsLoggedIn(false);
           setUserRole(null);
+          store.dispatch(logout());
         }
       } else {
         setIsLoggedIn(false);
         setUserRole(null);
+        if (store.getState().auth.isAuthenticated) {
+          store.dispatch(logout());
+        }
       }
     } catch (error) {
       // Don't logout on API errors - only on missing token
@@ -421,7 +436,7 @@ export default function App() {
 
   return (
     <Provider store={store}>
-      <NavigationContainer key={isLoggedIn ? `logged-${userRole}` : 'logged-out'}>
+      <NavigationContainer>
         <RootNavigator isLoggedIn={isLoggedIn} userRole={userRole} />
       </NavigationContainer>
     </Provider>

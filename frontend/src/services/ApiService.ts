@@ -194,8 +194,8 @@ class ApiServiceClass {
     return response.data;
   }
 
-  async recordFaceVerification(confidence: number) {
-    const response = await this.api.post('/face-verification/verify', { confidence });
+  async recordFaceVerification(faceImageData: string, confidence?: number) {
+    const response = await this.api.post('/face-verification/verify', { faceImageData, confidence });
     return response.data;
   }
 
@@ -367,6 +367,11 @@ class ApiServiceClass {
       console.log('Team locations endpoint not available, returning empty data');
       return [];
     }
+  }
+
+  async deleteTeam(teamId: string) {
+    const response = await this.api.delete(`/teams/${teamId}`);
+    return response.data;
   }
 
   /**

@@ -48,7 +48,8 @@
           "locationAlwaysAndWhenInUsePermission": "Allow GeoAttendance to access your location for attendance tracking."
         }
       ],
-      "expo-asset"
+      "expo-asset",
+      "@react-native-community/datetimepicker"
     ],
     "extra": {
       "eas": {

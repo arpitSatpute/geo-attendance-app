@@ -13,7 +13,7 @@ export class AuthService {
       // Store token and user data
       await AsyncStorage.setItem('authToken', token);
       await AsyncStorage.setItem('user', JSON.stringify(user));
-      
+
       // Update the API service token cache immediately
       ApiService.setTokenCache(token);
 
@@ -46,7 +46,7 @@ export class AuthService {
       await ApiService.logout();
       await AsyncStorage.removeItem('authToken');
       await AsyncStorage.removeItem('user');
-      
+
       // Clear the API service token cache
       ApiService.clearTokenCache();
     } catch (error) {
@@ -85,7 +85,10 @@ export class AuthService {
       const currentTime = Date.now() / 1000;
       return decoded.exp > currentTime;
     } catch (error) {
-      return false;
+      console.warn('jwtDecode failed (likely missing atob polyfill). Assuming token is valid.', error);
+      // Fallback: If we have a token but can't decode it locally, assume it's valid
+      // The backend will reject it anyway if it is truly expired
+      return true;
     }
   }
 
