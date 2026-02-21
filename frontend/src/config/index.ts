@@ -22,7 +22,7 @@ const getApiUrl = (): string => {
   }
 
   // Default fallback
-  return 'http://localhost:8080/api';
+  return 'http://10.89.227.129:8080/api';
 };
 
 const config: Config = {

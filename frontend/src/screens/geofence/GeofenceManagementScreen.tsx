@@ -12,6 +12,8 @@ import {
 } from 'react-native';
 import MapView, { Marker, Circle, PROVIDER_GOOGLE } from 'react-native-maps';
 import * as Location from 'expo-location';
+import { Dropdown } from 'react-native-element-dropdown';
+import { Ionicons } from '@expo/vector-icons';
 import { ApiService } from '../../services/ApiService';
 
 interface Geofence {
@@ -152,11 +154,11 @@ const GeofenceManagementScreen = () => {
         isActive: !geofence.active,
         geofenceType: 'CIRCLE',
       };
-      
+
       console.log('Toggling geofence:', geofence.id, 'to active:', updatedData.isActive);
       const response = await ApiService.put(`/geofences/${geofence.id}`, updatedData);
       console.log('Toggle response:', response);
-      
+
       Alert.alert('Success', `Geofence ${updatedData.isActive ? 'activated' : 'deactivated'} successfully`);
       await loadGeofences();
     } catch (error: any) {
@@ -228,10 +230,41 @@ const GeofenceManagementScreen = () => {
                     <Text style={styles.cardDescription}>{geofence.description}</Text>
                   )}
                 </View>
-                <View style={[styles.statusBadge, geofence.active ? styles.statusActive : styles.statusInactive]}>
-                  <Text style={styles.statusText}>
-                    {geofence.active ? 'Active' : 'Inactive'}
-                  </Text>
+                <View style={styles.headerActions}>
+                  <View style={[styles.statusBadge, geofence.active ? styles.statusActive : styles.statusInactive]}>
+                    <Text style={styles.statusText}>
+                      {geofence.active ? 'Active' : 'Inactive'}
+                    </Text>
+                  </View>
+                  <Dropdown
+                    style={styles.menuDropdown}
+                    placeholderStyle={styles.menuPlaceholder}
+                    selectedTextStyle={styles.menuSelectedText}
+                    containerStyle={styles.dropdownContainer}
+                    data={[
+                      { label: geofence.active ? 'Deactivate' : 'Activate', value: 'toggle' },
+                      { label: 'Edit', value: 'edit' },
+                      { label: 'Delete', value: 'delete' },
+                    ]}
+                    maxHeight={300}
+                    labelField="label"
+                    valueField="value"
+                    placeholder=""
+                    value=""
+                    onChange={item => {
+                      if (item.value === 'toggle') handleToggleActive(geofence);
+                      if (item.value === 'edit') handleEdit(geofence);
+                      if (item.value === 'delete') handleDelete(geofence);
+                    }}
+                    renderRightIcon={() => (
+                      <Ionicons name="ellipsis-vertical" size={24} color="#64748b" />
+                    )}
+                    renderItem={item => (
+                      <View style={styles.menuItem}>
+                        <Text style={[styles.menuItemText, item.value === 'delete' && { color: '#ef4444' }]}>{item.label}</Text>
+                      </View>
+                    )}
+                  />
                 </View>
               </View>
 
@@ -248,31 +281,6 @@ const GeofenceManagementScreen = () => {
                   <Text style={styles.infoLabel}>Radius:</Text>
                   <Text style={styles.infoValue}>{geofence.radius ?? 0}m</Text>
                 </View>
-              </View>
-
-              <View style={styles.cardActions}>
-                <TouchableOpacity 
-                  style={[styles.actionButton, geofence.active ? styles.deactivateButton : styles.activateButton]} 
-                  onPress={() => handleToggleActive(geofence)}
-                >
-                  <Text style={styles.actionButtonText}>
-                    {geofence.active ? '⏸️ Deactivate' : '▶️ Activate'}
-                  </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity 
-                  style={[styles.actionButton, styles.editButton]} 
-                  onPress={() => handleEdit(geofence)}
-                >
-                  <Text style={styles.actionButtonText}>✏️ Edit</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity 
-                  style={[styles.actionButton, styles.deleteButton]} 
-                  onPress={() => handleDelete(geofence)}
-                >
-                  <Text style={styles.actionButtonText}>🗑️ Delete</Text>
-                </TouchableOpacity>
               </View>
             </View>
           ))
@@ -335,7 +343,7 @@ const GeofenceManagementScreen = () => {
                 <TextInput
                   style={styles.input}
                   value={formData.name}
-                  onChangeText={(text) => setFormData({...formData, name: text})}
+                  onChangeText={(text) => setFormData({ ...formData, name: text })}
                   placeholder="e.g., Main Office"
                 />
               </View>
@@ -345,7 +353,7 @@ const GeofenceManagementScreen = () => {
                 <TextInput
                   style={styles.input}
                   value={formData.latitude}
-                  onChangeText={(text) => setFormData({...formData, latitude: text})}
+                  onChangeText={(text) => setFormData({ ...formData, latitude: text })}
                   placeholder="e.g., 37.7749"
                   keyboardType="numeric"
                 />
@@ -356,7 +364,7 @@ const GeofenceManagementScreen = () => {
                 <TextInput
                   style={styles.input}
                   value={formData.longitude}
-                  onChangeText={(text) => setFormData({...formData, longitude: text})}
+                  onChangeText={(text) => setFormData({ ...formData, longitude: text })}
                   placeholder="e.g., -122.4194"
                   keyboardType="numeric"
                 />
@@ -367,7 +375,7 @@ const GeofenceManagementScreen = () => {
                 <TextInput
                   style={styles.input}
                   value={formData.radius}
-                  onChangeText={(text) => setFormData({...formData, radius: text})}
+                  onChangeText={(text) => setFormData({ ...formData, radius: text })}
                   placeholder="e.g., 100"
                   keyboardType="numeric"
                 />
@@ -378,7 +386,7 @@ const GeofenceManagementScreen = () => {
                 <TextInput
                   style={[styles.input, styles.textArea]}
                   value={formData.description}
-                  onChangeText={(text) => setFormData({...formData, description: text})}
+                  onChangeText={(text) => setFormData({ ...formData, description: text })}
                   placeholder="Optional description"
                   multiline
                   numberOfLines={3}
@@ -387,15 +395,15 @@ const GeofenceManagementScreen = () => {
             </ScrollView>
 
             <View style={styles.modalActions}>
-              <TouchableOpacity 
-                style={styles.cancelButton} 
+              <TouchableOpacity
+                style={styles.cancelButton}
                 onPress={() => setModalVisible(false)}
               >
                 <Text style={styles.cancelButtonText}>Cancel</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity 
-                style={styles.saveButton} 
+              <TouchableOpacity
+                style={styles.saveButton}
                 onPress={handleSave}
               >
                 <Text style={styles.saveButtonText}>
@@ -449,13 +457,13 @@ const styles = StyleSheet.create({
   },
   addButton: {
     backgroundColor: '#000',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 6,
   },
   addButtonText: {
     color: '#fff',
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '600',
   },
   content: {
@@ -555,38 +563,40 @@ const styles = StyleSheet.create({
     flex: 1,
     textAlign: 'right',
   },
-  cardActions: {
+  headerActions: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginHorizontal: -5,
-    marginTop: 5,
+    alignItems: 'center',
+    gap: 8,
   },
-  actionButton: {
-    minWidth: '30%',
-    flex: 1,
-    paddingVertical: 12,
-    paddingHorizontal: 8,
-    marginHorizontal: 5,
-    marginBottom: 10,
-    borderRadius: 8,
+  menuDropdown: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
     alignItems: 'center',
   },
-  actionButtonText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: '600',
+  menuPlaceholder: {
+    display: 'none',
   },
-  activateButton: {
-    backgroundColor: '#4CAF50',
+  menuSelectedText: {
+    display: 'none',
   },
-  deactivateButton: {
-    backgroundColor: '#FF9800',
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    gap: 12,
+    minWidth: 180,
   },
-  editButton: {
-    backgroundColor: '#007AFF',
+  dropdownContainer: {
+    width: 200,
+    borderRadius: 12,
+    overflow: 'hidden',
+    marginLeft: -160, // Align right edge with ... icon
   },
-  deleteButton: {
-    backgroundColor: '#FF3B30',
+  menuItemText: {
+    fontSize: 14,
+    color: '#475569',
+    fontWeight: '500',
   },
   modalOverlay: {
     flex: 1,

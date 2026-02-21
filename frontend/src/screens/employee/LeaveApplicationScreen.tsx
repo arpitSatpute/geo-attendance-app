@@ -10,6 +10,7 @@ import {
   ScrollView,
   Platform,
 } from 'react-native';
+import { Dropdown } from 'react-native-element-dropdown';
 import { LeaveService } from '../../services/LeaveService';
 
 type LeaveType = 'SICK' | 'CASUAL' | 'ANNUAL' | 'UNPAID';
@@ -100,27 +101,32 @@ const LeaveApplicationScreen = ({ navigation }: any) => {
     }
   };
 
-  const days = startDate && endDate && validateDates() 
-    ? LeaveService.calculateDays(startDate, endDate) 
+  const days = startDate && endDate && validateDates()
+    ? LeaveService.calculateDays(startDate, endDate)
     : 0;
 
   return (
     <ScrollView style={styles.container}>
       <View style={styles.content}>
         <Text style={styles.label}>Leave Type</Text>
-        <View style={styles.typeRow}>
-          {(['CASUAL', 'SICK', 'ANNUAL', 'UNPAID'] as LeaveType[]).map((type) => (
-            <TouchableOpacity
-              key={type}
-              style={[styles.typeBtn, leaveType === type && styles.typeBtnActive]}
-              onPress={() => setLeaveType(type)}
-            >
-              <Text style={[styles.typeText, leaveType === type && styles.typeTextActive]}>
-                {type}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+        <Dropdown
+          style={styles.dropdown}
+          placeholderStyle={styles.placeholderStyle}
+          selectedTextStyle={styles.selectedTextStyle}
+          containerStyle={styles.dropdownContainer}
+          data={[
+            { label: 'Casual Leave', value: 'CASUAL' },
+            { label: 'Sick Leave', value: 'SICK' },
+            { label: 'Annual Leave', value: 'ANNUAL' },
+            { label: 'Unpaid Leave', value: 'UNPAID' },
+          ]}
+          maxHeight={300}
+          labelField="label"
+          valueField="value"
+          placeholder="Select Leave Type"
+          value={leaveType}
+          onChange={item => setLeaveType(item.value as LeaveType)}
+        />
 
         <Text style={styles.label}>Start Date (YYYY-MM-DD)</Text>
         <TextInput
@@ -183,49 +189,46 @@ const LeaveApplicationScreen = ({ navigation }: any) => {
 };
 
 const styles = StyleSheet.create({
-  container: { 
-    flex: 1, 
+  container: {
+    flex: 1,
     backgroundColor: '#f5f5f5',
   },
   content: {
     padding: 20,
   },
-  label: { 
-    fontSize: 15, 
-    fontWeight: '600', 
-    marginTop: 16, 
-    marginBottom: 8, 
-    color: '#333' 
+  label: {
+    fontSize: 15,
+    fontWeight: '600',
+    marginTop: 16,
+    marginBottom: 8,
+    color: '#333'
   },
-  typeRow: { 
-    flexDirection: 'row', 
-    flexWrap: 'wrap',
-    gap: 8, 
-    marginBottom: 10 
-  },
-  typeBtn: { 
-    backgroundColor: '#fff', 
-    paddingVertical: 10,
-    paddingHorizontal: 16,
+  dropdown: {
+    height: 50,
+    backgroundColor: '#fff',
     borderRadius: 8,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    marginBottom: 10,
+  },
+  placeholderStyle: {
+    fontSize: 16,
+    color: '#999',
+  },
+  selectedTextStyle: {
+    fontSize: 16,
+    color: '#333',
+  },
+  dropdownContainer: {
+    borderRadius: 12,
+    overflow: 'hidden',
     borderWidth: 1,
     borderColor: '#e0e0e0',
   },
-  typeBtnActive: { 
-    backgroundColor: '#2196F3',
-    borderColor: '#2196F3',
-  },
-  typeText: { 
-    color: '#333',
-    fontSize: 14,
-  },
-  typeTextActive: { 
-    color: '#fff', 
-    fontWeight: 'bold' 
-  },
-  dateInput: { 
-    backgroundColor: '#fff', 
-    borderRadius: 8, 
+  dateInput: {
+    backgroundColor: '#fff',
+    borderRadius: 8,
     padding: 12,
     fontSize: 16,
     borderWidth: 1,
@@ -243,9 +246,9 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
-  input: { 
-    backgroundColor: '#fff', 
-    borderRadius: 8, 
+  input: {
+    backgroundColor: '#fff',
+    borderRadius: 8,
     padding: 12,
     minHeight: 100,
     fontSize: 16,
@@ -254,20 +257,20 @@ const styles = StyleSheet.create({
     borderColor: '#e0e0e0',
     marginBottom: 20,
   },
-  applyBtn: { 
-    backgroundColor: '#FF9800', 
-    padding: 16, 
-    borderRadius: 8, 
-    alignItems: 'center', 
+  applyBtn: {
+    backgroundColor: '#FF9800',
+    padding: 16,
+    borderRadius: 8,
+    alignItems: 'center',
     marginTop: 10,
   },
   applyBtnDisabled: {
     opacity: 0.6,
   },
-  applyText: { 
-    color: '#fff', 
-    fontWeight: 'bold', 
-    fontSize: 16 
+  applyText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 16
   },
   historyBtn: {
     backgroundColor: '#fff',

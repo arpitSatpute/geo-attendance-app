@@ -40,7 +40,6 @@ const AuthStack = () => {
     <Stack.Navigator
       screenOptions={{
         headerShown: false,
-        animationEnabled: true,
       }}
     >
       <Stack.Screen name="Login" component={LoginScreen} />
@@ -66,15 +65,15 @@ const EmployeeStack = () => {
       <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} options={{ headerTitle: 'Change Password' }} />
       <Stack.Screen name="NotificationSettings" component={NotificationSettingsScreen} options={{ headerTitle: 'Notifications' }} />
       <Stack.Screen name="PrivacySettings" component={PrivacySettingsScreen} options={{ headerTitle: 'Privacy' }} />
-      <Stack.Screen 
-        name="FaceVerification" 
-        component={FaceVerificationScreen} 
-        options={{ headerTitle: 'Face Verification', headerShown: false }} 
+      <Stack.Screen
+        name="FaceVerification"
+        component={FaceVerificationScreen}
+        options={{ headerTitle: 'Face Verification', headerShown: false }}
       />
-      <Stack.Screen 
-        name="FaceRegistration" 
-        component={FaceRegistrationScreen} 
-        options={{ headerTitle: 'Face Registration', headerShown: false }} 
+      <Stack.Screen
+        name="FaceRegistration"
+        component={FaceRegistrationScreen}
+        options={{ headerTitle: 'Face Registration', headerShown: false }}
       />
     </Stack.Navigator>
   );
@@ -146,6 +145,9 @@ const EmployeeTabNavigator = () => {
 import TeamAttendanceScreen from './src/screens/manager/TeamAttendanceScreen';
 import LeaveApprovalScreen from './src/screens/manager/LeaveApprovalScreen';
 import ManagerSalaryScreen from './src/screens/manager/ManagerSalaryScreen';
+import EmployeeManagementScreen from './src/screens/manager/EmployeeManagementScreen';
+import EmployeeDetailScreen from './src/screens/manager/EmployeeDetailScreen';
+
 const ManagerStack = () => {
   return (
     <Stack.Navigator>
@@ -153,6 +155,8 @@ const ManagerStack = () => {
       <Stack.Screen name="TeamAttendance" component={TeamAttendanceScreen} options={{ headerTitle: 'Team Attendance' }} />
       <Stack.Screen name="LeaveApproval" component={LeaveApprovalScreen} options={{ headerTitle: 'Leave Approval' }} />
       <Stack.Screen name="ManagerSalary" component={ManagerSalaryScreen} options={{ headerTitle: 'Salary Management' }} />
+      <Stack.Screen name="EmployeeManagement" component={EmployeeManagementScreen} options={{ headerTitle: 'Employee Directory' }} />
+      <Stack.Screen name="EmployeeDetail" component={EmployeeDetailScreen} options={{ headerShown: false }} />
       <Stack.Screen name="Reports" component={ReportsScreen} options={{ headerTitle: 'Reports' }} />
       <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} options={{ headerTitle: 'Change Password' }} />
       <Stack.Screen name="NotificationSettings" component={NotificationSettingsScreen} options={{ headerTitle: 'Notifications' }} />
@@ -313,7 +317,7 @@ const AdminTabNavigator = () => {
 };
 
 // Root Navigator
-const RootNavigator = ({ isLoggedIn, userRole }) => {
+const RootNavigator = ({ isLoggedIn, userRole }: { isLoggedIn: boolean; userRole: string | null }) => {
   if (!isLoggedIn) {
     return <AuthStack />;
   }

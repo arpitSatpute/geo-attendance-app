@@ -9,7 +9,7 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native';
-import { Picker } from '@react-native-picker/picker';
+import { Dropdown } from 'react-native-element-dropdown';
 import { ApiService } from '../../services/ApiService';
 
 const AddUserScreen = ({ navigation }: any) => {
@@ -179,17 +179,25 @@ const AddUserScreen = ({ navigation }: any) => {
 
           <View style={styles.inputGroup}>
             <Text style={styles.inputLabel}>Role *</Text>
-            <View style={styles.pickerContainer}>
-              <Picker
-                selectedValue={formData.role}
-                onValueChange={(value) => setFormData({ ...formData, role: value })}
-                style={styles.picker}
-              >
-                <Picker.Item label="Employee" value="EMPLOYEE" />
-                <Picker.Item label="Manager" value="MANAGER" />
-                <Picker.Item label="Admin" value="ADMIN" />
-              </Picker>
-            </View>
+            <Dropdown
+              style={styles.dropdown}
+              placeholderStyle={styles.placeholderStyle}
+              selectedTextStyle={styles.selectedTextStyle}
+              inputSearchStyle={styles.inputSearchStyle}
+              iconStyle={styles.iconStyle}
+              containerStyle={styles.dropdownContainer}
+              data={[
+                { label: 'Employee', value: 'EMPLOYEE' },
+                { label: 'Manager', value: 'MANAGER' },
+                { label: 'Admin', value: 'ADMIN' },
+              ]}
+              maxHeight={200}
+              labelField="label"
+              valueField="value"
+              placeholder="Select Role"
+              value={formData.role}
+              onChange={item => setFormData({ ...formData, role: item.value })}
+            />
           </View>
 
           <View style={styles.inputGroup}>
@@ -308,15 +316,35 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#e0e0e0',
   },
-  pickerContainer: {
+  dropdown: {
+    height: 50,
     backgroundColor: '#f5f5f5',
     borderRadius: 8,
+    paddingHorizontal: 12,
     borderWidth: 1,
     borderColor: '#e0e0e0',
-    overflow: 'hidden',
   },
-  picker: {
-    height: 50,
+  placeholderStyle: {
+    fontSize: 16,
+    color: '#94a3b8',
+  },
+  selectedTextStyle: {
+    fontSize: 16,
+    color: '#333',
+  },
+  iconStyle: {
+    width: 20,
+    height: 20,
+  },
+  inputSearchStyle: {
+    height: 40,
+    fontSize: 16,
+  },
+  dropdownContainer: {
+    borderRadius: 12,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
   },
   button: {
     backgroundColor: '#007AFF',

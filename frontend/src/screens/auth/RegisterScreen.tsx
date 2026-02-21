@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ScrollView } from 'react-native';
+import { Dropdown } from 'react-native-element-dropdown';
 import { AuthService } from '../../services/AuthService';
 
 const RegisterScreen = ({ navigation }: any) => {
@@ -10,6 +11,7 @@ const RegisterScreen = ({ navigation }: any) => {
     lastName: '',
     phone: '',
     role: 'EMPLOYEE', // Default role
+    baseSalary: '',
   });
   const [loading, setLoading] = useState(false);
 
@@ -23,9 +25,15 @@ const RegisterScreen = ({ navigation }: any) => {
 
     setLoading(true);
     try {
+      // Prepare registration data
+      const registrationData = {
+        ...formData,
+        baseSalary: formData.role === 'EMPLOYEE' && formData.baseSalary ? parseFloat(formData.baseSalary) : null,
+      };
+
       // Register user account
-      await AuthService.register(formData);
-      
+      await AuthService.register(registrationData);
+
       // Ask user to register face
       Alert.alert(
         'Account Created!',
@@ -112,41 +120,33 @@ const RegisterScreen = ({ navigation }: any) => {
         secureTextEntry
       />
 
+      {formData.role === 'EMPLOYEE' && (
+        <TextInput
+          style={styles.input}
+          placeholder="Monthly Base Salary (₹)"
+          value={formData.baseSalary}
+          onChangeText={(text) => setFormData({ ...formData, baseSalary: text })}
+          keyboardType="numeric"
+        />
+      )}
+
       <Text style={styles.roleLabel}>Account Type *</Text>
-      <View style={styles.roleContainer}>
-        <TouchableOpacity
-          style={[
-            styles.roleButton,
-            formData.role === 'EMPLOYEE' && styles.roleButtonActive,
-          ]}
-          onPress={() => setFormData({ ...formData, role: 'EMPLOYEE' })}
-        >
-          <Text
-            style={[
-              styles.roleButtonText,
-              formData.role === 'EMPLOYEE' && styles.roleButtonTextActive,
-            ]}
-          >
-            Employee
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[
-            styles.roleButton,
-            formData.role === 'MANAGER' && styles.roleButtonActive,
-          ]}
-          onPress={() => setFormData({ ...formData, role: 'MANAGER' })}
-        >
-          <Text
-            style={[
-              styles.roleButtonText,
-              formData.role === 'MANAGER' && styles.roleButtonTextActive,
-            ]}
-          >
-            Manager
-          </Text>
-        </TouchableOpacity>
-      </View>
+      <Dropdown
+        style={styles.dropdown}
+        placeholderStyle={styles.placeholderStyle}
+        selectedTextStyle={styles.selectedTextStyle}
+        containerStyle={styles.dropdownContainer}
+        data={[
+          { label: 'Employee', value: 'EMPLOYEE' },
+          { label: 'Manager', value: 'MANAGER' },
+        ]}
+        maxHeight={200}
+        labelField="label"
+        valueField="value"
+        placeholder="Select Account Type"
+        value={formData.role}
+        onChange={item => setFormData({ ...formData, role: item.value })}
+      />
 
       <TouchableOpacity
         style={styles.button}
@@ -201,32 +201,28 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     marginBottom: 10,
   },
-  roleContainer: {
-    flexDirection: 'row',
-    marginBottom: 15,
-    gap: 10,
-  },
-  roleButton: {
-    flex: 1,
-    paddingVertical: 12,
-    paddingHorizontal: 20,
+  dropdown: {
+    height: 50,
+    backgroundColor: '#fff',
     borderRadius: 8,
+    paddingHorizontal: 15,
     borderWidth: 1,
     borderColor: '#ddd',
-    backgroundColor: '#fff',
-    alignItems: 'center',
+    marginBottom: 15,
   },
-  roleButtonActive: {
-    backgroundColor: '#007AFF',
-    borderColor: '#007AFF',
+  placeholderStyle: {
+    fontSize: 16,
+    color: '#999',
   },
-  roleButtonText: {
-    fontSize: 14,
-    color: '#666',
-    fontWeight: '500',
+  selectedTextStyle: {
+    fontSize: 16,
+    color: '#333',
   },
-  roleButtonTextActive: {
-    color: '#fff',
+  dropdownContainer: {
+    borderRadius: 12,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#ddd',
   },
   button: {
     backgroundColor: '#007AFF',

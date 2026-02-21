@@ -10,7 +10,7 @@ import {
   RefreshControl,
   Modal,
 } from 'react-native';
-import { Picker } from '@react-native-picker/picker';
+import { Dropdown } from 'react-native-element-dropdown';
 import { SalaryService, SalaryData } from '../../services/SalaryService';
 
 const EmployeeSalaryScreen = () => {
@@ -199,7 +199,7 @@ const EmployeeSalaryScreen = () => {
   }
 
   return (
-    <ScrollView 
+    <ScrollView
       style={styles.container}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
     >
@@ -345,32 +345,40 @@ const EmployeeSalaryScreen = () => {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Select Month & Year</Text>
-            
-            <View style={styles.pickerRow}>
-              <View style={styles.pickerContainer}>
+
+            <View style={styles.dropdownRow}>
+              <View style={styles.dropdownContainerWrapper}>
                 <Text style={styles.pickerLabel}>Month</Text>
-                <Picker
-                  selectedValue={selectedMonth}
-                  onValueChange={setSelectedMonth}
-                  style={styles.picker}
-                >
-                  {months.map(m => (
-                    <Picker.Item key={m.value} label={m.label} value={m.value} />
-                  ))}
-                </Picker>
+                <Dropdown
+                  style={styles.dropdown}
+                  placeholderStyle={styles.placeholderStyle}
+                  selectedTextStyle={styles.selectedTextStyle}
+                  containerStyle={styles.dropdownPopup}
+                  data={months}
+                  maxHeight={300}
+                  labelField="label"
+                  valueField="value"
+                  placeholder="Select Month"
+                  value={selectedMonth}
+                  onChange={item => setSelectedMonth(item.value)}
+                />
               </View>
-              
-              <View style={styles.pickerContainer}>
+
+              <View style={styles.dropdownContainerWrapper}>
                 <Text style={styles.pickerLabel}>Year</Text>
-                <Picker
-                  selectedValue={selectedYear}
-                  onValueChange={setSelectedYear}
-                  style={styles.picker}
-                >
-                  {years.map(y => (
-                    <Picker.Item key={y} label={y.toString()} value={y} />
-                  ))}
-                </Picker>
+                <Dropdown
+                  style={styles.dropdown}
+                  placeholderStyle={styles.placeholderStyle}
+                  selectedTextStyle={styles.selectedTextStyle}
+                  containerStyle={styles.dropdownPopup}
+                  data={years.map(y => ({ label: y.toString(), value: y }))}
+                  maxHeight={300}
+                  labelField="label"
+                  valueField="value"
+                  placeholder="Select Year"
+                  value={selectedYear}
+                  onChange={item => setSelectedYear(item.value)}
+                />
               </View>
             </View>
 
@@ -648,12 +656,12 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 20,
   },
-  pickerRow: {
+  dropdownRow: {
     flexDirection: 'row',
     gap: 12,
     marginBottom: 20,
   },
-  pickerContainer: {
+  dropdownContainerWrapper: {
     flex: 1,
   },
   pickerLabel: {
@@ -662,9 +670,27 @@ const styles = StyleSheet.create({
     color: '#666',
     marginBottom: 8,
   },
-  picker: {
+  dropdown: {
+    height: 50,
     backgroundColor: '#f5f5f5',
     borderRadius: 8,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+  },
+  placeholderStyle: {
+    fontSize: 16,
+    color: '#94a3b8',
+  },
+  selectedTextStyle: {
+    fontSize: 16,
+    color: '#333',
+  },
+  dropdownPopup: {
+    borderRadius: 12,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
   },
   modalButtons: {
     flexDirection: 'row',

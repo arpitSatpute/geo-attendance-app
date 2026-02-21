@@ -11,6 +11,8 @@ import {
   Platform,
 } from 'react-native';
 import { ApiService } from '../../services/ApiService';
+import { Dropdown } from 'react-native-element-dropdown';
+import { Ionicons } from '@expo/vector-icons';
 
 interface Team {
   id: string;
@@ -47,7 +49,7 @@ const TeamManagementScreen = () => {
   const [availableGeofences, setAvailableGeofences] = useState<any[]>([]);
   const [loadingGeofences, setLoadingGeofences] = useState(false);
   const [selectedGeofenceId, setSelectedGeofenceId] = useState<string | null>(null);
-  
+
   // Work Hours Modal State
   const [showWorkHoursModal, setShowWorkHoursModal] = useState<{ open: boolean; teamId: string | null }>({ open: false, teamId: null });
   const [workHoursData, setWorkHoursData] = useState<WorkHoursData>({
@@ -59,6 +61,7 @@ const TeamManagementScreen = () => {
     checkOutBufferMinutes: 0,
   });
   const [savingWorkHours, setSavingWorkHours] = useState(false);
+
 
   useEffect(() => {
     loadTeams();
@@ -120,15 +123,28 @@ const TeamManagementScreen = () => {
     }
   };
 
-  const handleRemoveEmployee = async (teamId: string, employeeId: string) => {
-    try {
-      await ApiService.post(`/teams/${teamId}/remove-employee?employeeId=${employeeId}`);
-      setEmployees((prev) => prev.filter((emp) => emp.id !== employeeId));
-      loadTeams();
-      Alert.alert('Success', 'Employee removed from team');
-    } catch (error) {
-      Alert.alert('Error', 'Failed to remove employee');
-    }
+  const handleRemoveEmployee = (teamId: string, employeeId: string, employeeName: string) => {
+    Alert.alert(
+      'Remove Employee',
+      `Are you sure you want to remove ${employeeName} from this team?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await ApiService.post(`/teams/${teamId}/remove-employee?employeeId=${employeeId}`);
+              setEmployees((prev) => prev.filter((emp) => emp.id !== employeeId));
+              loadTeams();
+              Alert.alert('Success', 'Employee removed from team');
+            } catch (error) {
+              Alert.alert('Error', 'Failed to remove employee');
+            }
+          },
+        },
+      ]
+    );
   };
 
   const handleShowGeofenceModal = async (teamId: string) => {
@@ -183,7 +199,7 @@ const TeamManagementScreen = () => {
 
   const handleSaveWorkHours = async () => {
     if (!showWorkHoursModal.teamId) return;
-    
+
     setSavingWorkHours(true);
     try {
       await ApiService.post(`/teams/${showWorkHoursModal.teamId}/work-hours`, workHoursData);
@@ -196,6 +212,7 @@ const TeamManagementScreen = () => {
       setSavingWorkHours(false);
     }
   };
+
 
   return (
     <View style={styles.container}>
@@ -211,30 +228,43 @@ const TeamManagementScreen = () => {
         ) : (
           teams.map((team) => (
             <View key={team.id} style={styles.teamCard}>
-              <Text style={styles.teamName}>{team.name}</Text>
-              <Text style={styles.teamInfo}>Employees: {team.employeeIds ? team.employeeIds.length : 0}</Text>
-              <Text style={styles.teamInfo}>Geofence: {team.geofenceId ? team.geofenceId : 'Not set'}</Text>
-              <View style={styles.actionsGrid}>
-                <View style={styles.actionButtonWrapper}>
-                  <TouchableOpacity style={styles.addEmpButton} onPress={() => setAddEmployeeModal({ open: true, teamId: team.id })}>
-                    <Text style={styles.addEmpButtonText}>+ Add Employee</Text>
-                  </TouchableOpacity>
+              <View style={styles.cardHeaderRow}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.teamName}>{team.name}</Text>
+                  <Text style={styles.teamInfo}>Employees: {team.employeeIds ? team.employeeIds.length : 0}</Text>
+                  <Text style={styles.teamInfo}>Geofence: {team.geofenceId ? team.geofenceId : 'Not set'}</Text>
                 </View>
-                <View style={styles.actionButtonWrapper}>
-                  <TouchableOpacity style={styles.showEmpButton} onPress={() => handleShowEmployees(team.id)}>
-                    <Text style={styles.showEmpButtonText}>View Employees</Text>
-                  </TouchableOpacity>
-                </View>
-                <View style={styles.actionButtonWrapper}>
-                  <TouchableOpacity style={styles.setGeofenceButton} onPress={() => handleShowGeofenceModal(team.id)}>
-                    <Text style={styles.setGeofenceButtonText}>Set Geofence</Text>
-                  </TouchableOpacity>
-                </View>
-                <View style={styles.actionButtonWrapper}>
-                  <TouchableOpacity style={styles.workHoursButton} onPress={() => handleShowWorkHoursModal(team.id)}>
-                    <Text style={styles.workHoursButtonText}>Work Hours</Text>
-                  </TouchableOpacity>
-                </View>
+                <Dropdown
+                  style={styles.menuDropdown}
+                  placeholderStyle={styles.menuPlaceholder}
+                  selectedTextStyle={styles.menuSelectedText}
+                  containerStyle={styles.dropdownContainer}
+                  data={[
+                    { label: 'Add Employee', value: 'add' },
+                    { label: 'View Employees', value: 'view' },
+                    { label: 'Set Geofence', value: 'geofence' },
+                    { label: 'Work Hours', value: 'hours' },
+                  ]}
+                  maxHeight={300}
+                  labelField="label"
+                  valueField="value"
+                  placeholder=""
+                  value=""
+                  onChange={item => {
+                    if (item.value === 'add') setAddEmployeeModal({ open: true, teamId: team.id });
+                    if (item.value === 'view') handleShowEmployees(team.id);
+                    if (item.value === 'geofence') handleShowGeofenceModal(team.id);
+                    if (item.value === 'hours') handleShowWorkHoursModal(team.id);
+                  }}
+                  renderRightIcon={() => (
+                    <Ionicons name="ellipsis-vertical" size={24} color="#64748b" />
+                  )}
+                  renderItem={item => (
+                    <View style={styles.menuItem}>
+                      <Text style={styles.menuItemText}>{item.label}</Text>
+                    </View>
+                  )}
+                />
               </View>
             </View>
           ))
@@ -299,11 +329,18 @@ const TeamManagementScreen = () => {
               <ScrollView style={{ maxHeight: 250 }}>
                 {employees.map((emp, idx) => (
                   <View key={emp.id || idx} style={styles.employeeRow}>
-                    <Text style={styles.employeeName}>{emp.firstName} {emp.lastName}</Text>
-                    <Text style={styles.employeeEmail}>{emp.email}</Text>
-                    <TouchableOpacity style={styles.removeEmpButton} onPress={() => handleRemoveEmployee(showEmployeesModal.teamId!, emp.id)}>
-                      <Text style={styles.removeEmpButtonText}>Remove</Text>
-                    </TouchableOpacity>
+                    <View style={styles.employeeInfoSimple}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.employeeName}>{emp.firstName} {emp.lastName}</Text>
+                        <Text style={styles.employeeEmailSmall}>{emp.email}</Text>
+                      </View>
+                      <TouchableOpacity
+                        style={styles.removeIconButton}
+                        onPress={() => handleRemoveEmployee(showEmployeesModal.teamId!, emp.id, `${emp.firstName} ${emp.lastName}`)}
+                      >
+                        <Ionicons name="trash-outline" size={20} color="#F44336" />
+                      </TouchableOpacity>
+                    </View>
                   </View>
                 ))}
               </ScrollView>
@@ -326,18 +363,19 @@ const TeamManagementScreen = () => {
             ) : availableGeofences.length === 0 ? (
               <Text>No geofences available.</Text>
             ) : (
-              <ScrollView style={{ maxHeight: 250 }}>
-                {availableGeofences.map((geo) => (
-                  <TouchableOpacity
-                    key={geo.id}
-                    style={selectedGeofenceId === geo.id ? styles.selectedGeofence : styles.geofenceRow}
-                    onPress={() => setSelectedGeofenceId(geo.id)}
-                  >
-                    <Text style={styles.geofenceName}>{geo.name}</Text>
-                    <Text style={styles.geofenceDesc}>{geo.description || ''}</Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
+              <Dropdown
+                style={styles.modalDropdown}
+                placeholderStyle={styles.placeholderStyle}
+                selectedTextStyle={styles.selectedTextStyle}
+                containerStyle={styles.modalDropdownContainer}
+                data={availableGeofences.map(geo => ({ label: geo.name, value: geo.id }))}
+                maxHeight={300}
+                labelField="label"
+                valueField="value"
+                placeholder="Select Geofence"
+                value={selectedGeofenceId}
+                onChange={item => setSelectedGeofenceId(item.value)}
+              />
             )}
             <View style={styles.modalActions}>
               <TouchableOpacity style={styles.cancelButton} onPress={() => setShowGeofenceModal({ open: false, teamId: null })}>
@@ -363,7 +401,7 @@ const TeamManagementScreen = () => {
                 value={workHoursData.workStartTime}
                 onChangeText={(text) => setWorkHoursData({ ...workHoursData, workStartTime: text })}
               />
-              
+
               <Text style={styles.inputLabel}>Work End Time (HH:MM)</Text>
               <TextInput
                 style={styles.input}
@@ -371,7 +409,7 @@ const TeamManagementScreen = () => {
                 value={workHoursData.workEndTime}
                 onChangeText={(text) => setWorkHoursData({ ...workHoursData, workEndTime: text })}
               />
-              
+
               <Text style={styles.inputLabel}>Check-in Deadline (HH:MM)</Text>
               <Text style={styles.inputHint}>After this time, employee will be marked absent</Text>
               <TextInput
@@ -380,7 +418,7 @@ const TeamManagementScreen = () => {
                 value={workHoursData.checkInDeadline}
                 onChangeText={(text) => setWorkHoursData({ ...workHoursData, checkInDeadline: text })}
               />
-              
+
               <Text style={styles.inputLabel}>Check-out Allowed From (HH:MM)</Text>
               <Text style={styles.inputHint}>Earliest time employees can check out</Text>
               <TextInput
@@ -389,7 +427,7 @@ const TeamManagementScreen = () => {
                 value={workHoursData.checkOutAllowedFrom}
                 onChangeText={(text) => setWorkHoursData({ ...workHoursData, checkOutAllowedFrom: text })}
               />
-              
+
               <Text style={styles.inputLabel}>Check-in Buffer (minutes)</Text>
               <Text style={styles.inputHint}>How early employees can check in before start time</Text>
               <TextInput
@@ -399,7 +437,7 @@ const TeamManagementScreen = () => {
                 value={String(workHoursData.checkInBufferMinutes)}
                 onChangeText={(text) => setWorkHoursData({ ...workHoursData, checkInBufferMinutes: parseInt(text) || 0 })}
               />
-              
+
               <Text style={styles.inputLabel}>Check-out Buffer (minutes)</Text>
               <TextInput
                 style={styles.input}
@@ -413,8 +451,8 @@ const TeamManagementScreen = () => {
               <TouchableOpacity style={styles.cancelButton} onPress={() => setShowWorkHoursModal({ open: false, teamId: null })}>
                 <Text style={styles.cancelButtonText}>Cancel</Text>
               </TouchableOpacity>
-              <TouchableOpacity 
-                style={[styles.saveButton, savingWorkHours && styles.disabledButton]} 
+              <TouchableOpacity
+                style={[styles.saveButton, savingWorkHours && styles.disabledButton]}
                 onPress={handleSaveWorkHours}
                 disabled={savingWorkHours}
               >
@@ -424,6 +462,7 @@ const TeamManagementScreen = () => {
           </View>
         </View>
       </Modal>
+
     </View>
   );
 };
@@ -431,16 +470,49 @@ const TeamManagementScreen = () => {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f5f5f5' },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, flexWrap: 'wrap' },
-  title: { fontSize: 24, fontWeight: 'bold', color: '#000', marginBottom: 10 },
-  addButton: { backgroundColor: '#000', paddingHorizontal: 20, paddingVertical: 12, borderRadius: 8 },
-  addButtonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+  title: { fontSize: 24, fontWeight: 'bold', color: '#000' },
+  addButton: { backgroundColor: '#000', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 6 },
+  addButtonText: { color: '#fff', fontSize: 12, fontWeight: '600' },
   content: { flex: 1, paddingHorizontal: 15, paddingVertical: 10 },
   emptyText: { textAlign: 'center', color: '#999', marginTop: 40 },
   teamCard: { backgroundColor: '#fff', borderRadius: 10, padding: 16, marginBottom: 15, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 4, elevation: 2 },
   teamName: { fontSize: 18, fontWeight: 'bold', color: '#333', marginBottom: 8 },
   teamInfo: { fontSize: 14, color: '#666', marginBottom: 4 },
-  actionsGrid: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 12, marginHorizontal: -5 },
-  actionButtonWrapper: { width: '33.33%', paddingHorizontal: 5, marginBottom: 10, minWidth: 100 },
+  cardHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  menuDropdown: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  menuPlaceholder: {
+    display: 'none',
+  },
+  menuSelectedText: {
+    display: 'none',
+  },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    gap: 12,
+    minWidth: 200,
+  },
+  dropdownContainer: {
+    width: 220,
+    borderRadius: 12,
+    overflow: 'hidden',
+    marginLeft: -180, // Align right edge with ... icon
+  },
+  menuItemText: {
+    fontSize: 14,
+    color: '#475569',
+    fontWeight: '500',
+  },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.3)', justifyContent: 'center', alignItems: 'center', padding: 20 },
   modalContent: { backgroundColor: '#fff', borderRadius: 12, padding: 30, width: '100%', maxWidth: 400 },
   modalTitle: { fontSize: 20, fontWeight: 'bold', marginBottom: 20, color: '#000' },
@@ -458,9 +530,21 @@ const styles = StyleSheet.create({
   setGeofenceButtonText: { color: '#fff', fontWeight: '600', fontSize: 13 },
   employeeRow: { borderBottomWidth: 1, borderBottomColor: '#eee', paddingVertical: 10, paddingHorizontal: 5 },
   employeeName: { fontSize: 16, fontWeight: '500', color: '#222', marginBottom: 2 },
-  employeeEmail: { fontSize: 13, color: '#666', marginBottom: 6 },
-  removeEmpButton: { backgroundColor: '#F44336', borderRadius: 6, paddingVertical: 6, paddingHorizontal: 12, alignItems: 'center', alignSelf: 'flex-start' },
-  removeEmpButtonText: { color: '#fff', fontWeight: '600', fontSize: 13 },
+  employeeInfoSimple: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%',
+  },
+  employeeEmailSmall: {
+    fontSize: 12,
+    color: '#666',
+  },
+  removeIconButton: {
+    padding: 8,
+    borderRadius: 20,
+    backgroundColor: '#FFEBEE',
+  },
   geofenceRow: { borderBottomWidth: 1, borderBottomColor: '#eee', paddingVertical: 12, paddingHorizontal: 8 },
   selectedGeofence: { borderWidth: 2, borderColor: '#673AB7', backgroundColor: '#ede7f6', paddingVertical: 12, paddingHorizontal: 8, borderRadius: 6, marginBottom: 8 },
   geofenceName: { fontSize: 16, fontWeight: '500', color: '#222', marginBottom: 2 },
@@ -470,6 +554,30 @@ const styles = StyleSheet.create({
   inputLabel: { fontSize: 14, fontWeight: '600', color: '#333', marginBottom: 4, marginTop: 12 },
   inputHint: { fontSize: 12, color: '#888', marginBottom: 4 },
   disabledButton: { backgroundColor: '#999' },
+  employeeTitle: { fontSize: 16, color: '#666', marginBottom: 15 },
+  modalDropdown: {
+    height: 50,
+    backgroundColor: '#f8fafc',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    marginBottom: 20,
+  },
+  modalDropdownContainer: {
+    borderRadius: 12,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  placeholderStyle: {
+    fontSize: 14,
+    color: '#94a3b8',
+  },
+  selectedTextStyle: {
+    fontSize: 14,
+    color: '#333',
+  },
 });
 
 export default TeamManagementScreen;

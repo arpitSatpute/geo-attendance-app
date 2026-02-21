@@ -25,7 +25,7 @@ const ManagerDashboard = () => {
 
   useEffect(() => {
     loadData();
-    
+
     // Update clock every second
     const timer = setInterval(() => {
       setCurrentTime(new Date());
@@ -42,11 +42,11 @@ const ManagerDashboard = () => {
         ApiService.getTeamLocations().catch(() => []),
         ApiService.getTeamCurrentStatus().catch(() => []),
       ]);
-      
+
       setUser(userData);
       setTeamLocations(locations || []);
       setTeamStatus(status || []);
-      
+
       // Calculate team statistics from current status
       calculateTeamStats(status || []);
     } catch (error: any) {
@@ -85,10 +85,10 @@ const ManagerDashboard = () => {
   const formatTime = (dateString: string) => {
     if (!dateString) return 'N/A';
     const date = new Date(dateString);
-    return date.toLocaleTimeString('en-US', { 
-      hour: '2-digit', 
+    return date.toLocaleTimeString('en-US', {
+      hour: '2-digit',
       minute: '2-digit',
-      hour12: true 
+      hour12: true
     });
   };
 
@@ -113,11 +113,11 @@ const ManagerDashboard = () => {
         <Text style={styles.userName}>{user?.firstName || 'Manager'}</Text>
         <Text style={styles.role}>Team Manager</Text>
         <Text style={styles.clock}>
-          {currentTime.toLocaleTimeString('en-US', { 
-            hour: '2-digit', 
+          {currentTime.toLocaleTimeString('en-US', {
+            hour: '2-digit',
             minute: '2-digit',
             second: '2-digit',
-            hour12: true 
+            hour12: true
           })}
         </Text>
       </View>
@@ -147,55 +147,19 @@ const ManagerDashboard = () => {
         </View>
       </View>
 
-      {/* Team Members Current Status */}
-      {teamStatus.length > 0 && (
-        <View style={styles.teamStatusContainer}>
-          <Text style={styles.sectionTitle}>Team Status (Today)</Text>
-          {teamStatus.map((member: any, index: number) => (
-            <View key={member.userId || index} style={styles.memberCard}>
-              <View style={styles.memberInfo}>
-                <Text style={styles.memberName}>
-                  {member.firstName} {member.lastName}
-                </Text>
-                <Text style={styles.memberEmail}>{member.email}</Text>
-              </View>
-              <View style={styles.memberStatusContainer}>
-                <View style={[
-                  styles.statusBadge,
-                  member.status === 'CHECKED_IN' && styles.statusCheckedIn,
-                  member.status === 'CHECKED_OUT' && styles.statusCheckedOut,
-                  member.status === 'ABSENT' && styles.statusAbsent,
-                ]}>
-                  <Text style={styles.statusBadgeText}>{member.status}</Text>
-                </View>
-                {member.checkInTime && (
-                  <Text style={styles.timeText}>
-                    In: {formatTime(member.checkInTime)}
-                  </Text>
-                )}
-                {member.checkOutTime && (
-                  <Text style={styles.timeText}>
-                    Out: {formatTime(member.checkOutTime)}
-                  </Text>
-                )}
-              </View>
-            </View>
-          ))}
-        </View>
-      )}
 
       {/* Quick Actions */}
       <View style={styles.actionsContainer}>
         <Text style={styles.sectionTitle}>Quick Actions</Text>
         <View style={styles.actionsGrid}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.actionButton}
             onPress={() => navigation.navigate('TeamAttendance')}
           >
             <Text style={styles.actionIcon}>📊</Text>
             <Text style={styles.actionText}>Team Attendance</Text>
           </TouchableOpacity>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.actionButton}
             onPress={() => navigation.navigate('LeaveApproval')}
           >
@@ -204,28 +168,19 @@ const ManagerDashboard = () => {
           </TouchableOpacity>
         </View>
         <View style={styles.actionsGrid}>
-          <TouchableOpacity 
-            style={styles.actionButton}
-            onPress={() => navigation.navigate('Reports')}
-          >
-            <Text style={styles.actionIcon}>📈</Text>
-            <Text style={styles.actionText}>View Reports</Text>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={styles.actionButton}
-            onPress={() => navigation.navigate('Geofences')}
-          >
-            <Text style={styles.actionIcon}>🗺️</Text>
-            <Text style={styles.actionText}>Geofences</Text>
-          </TouchableOpacity>
-        </View>
-        <View style={styles.actionsGrid}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.actionButton}
             onPress={() => navigation.navigate('ManagerSalary')}
           >
             <Text style={styles.actionIcon}>💰</Text>
             <Text style={styles.actionText}>Salary Management</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => navigation.navigate('EmployeeManagement')}
+          >
+            <Text style={styles.actionIcon}>👥</Text>
+            <Text style={styles.actionText}>Employee Directory</Text>
           </TouchableOpacity>
         </View>
       </View>

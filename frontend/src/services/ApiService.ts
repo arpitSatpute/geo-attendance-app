@@ -30,12 +30,15 @@ class ApiServiceClass {
             this.tokenCache = token;
           }
         }
-        
+
+        const method = config.method?.toUpperCase() || 'UNKNOWN';
+        const url = (config.baseURL || '') + (config.url || '');
+
         if (token) {
           config.headers.Authorization = `Bearer ${token}`;
-          console.log('API Request:', config.method?.toUpperCase(), config.baseURL + config.url, '- Token present');
+          console.log('API Request:', method, url, '- Token present');
         } else {
-          console.log('API Request:', config.method?.toUpperCase(), config.baseURL + config.url, '- NO TOKEN');
+          console.log('API Request:', method, url, '- NO TOKEN');
         }
         return config;
       },
@@ -55,25 +58,25 @@ class ApiServiceClass {
         const status = error.response?.status;
         const url = error.config?.url;
         const responseData = error.response?.data as any;
-        
+
         console.error('API Error:', status, error.message);
         console.error('API Error URL:', url);
         console.error('API Error Response:', JSON.stringify(responseData));
-        
+
         // Don't automatically logout on 401 - let the app handle it gracefully
         // The app uses cached data when API fails
         // Only log for debugging
         if (status === 401) {
           console.log('401 error on:', url);
         }
-        
+
         // Attach detailed error message
         if (responseData?.message) {
           error.message = responseData.message;
         } else if (responseData?.error) {
           error.message = responseData.error;
         }
-        
+
         return Promise.reject(error);
       }
     );
@@ -456,23 +459,23 @@ class ApiServiceClass {
   /**
    * Generic HTTP methods
    */
-  async get(url: string, config?: any) {
-    const response = await this.api.get(url, config);
+  async get<T = any>(url: string, config?: any) {
+    const response = await this.api.get<T>(url, config);
     return response;
   }
 
-  async post(url: string, data?: any, config?: any) {
-    const response = await this.api.post(url, data, config);
+  async post<T = any>(url: string, data?: any, config?: any) {
+    const response = await this.api.post<T>(url, data, config);
     return response;
   }
 
-  async put(url: string, data?: any, config?: any) {
-    const response = await this.api.put(url, data, config);
+  async put<T = any>(url: string, data?: any, config?: any) {
+    const response = await this.api.put<T>(url, data, config);
     return response;
   }
 
-  async delete(url: string, config?: any) {
-    const response = await this.api.delete(url, config);
+  async delete<T = any>(url: string, config?: any) {
+    const response = await this.api.delete<T>(url, config);
     return response;
   }
 }

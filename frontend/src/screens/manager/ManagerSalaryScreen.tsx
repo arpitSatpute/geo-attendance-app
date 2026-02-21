@@ -10,7 +10,7 @@ import {
   TextInput,
   Modal,
 } from 'react-native';
-import { Picker } from '@react-native-picker/picker';
+import { Dropdown } from 'react-native-element-dropdown';
 import { SalaryService, SalaryData, SalaryCalculationRequest } from '../../services/SalaryService';
 import { ApiService } from '../../services/ApiService';
 
@@ -189,25 +189,33 @@ const ManagerSalaryScreen = () => {
       {/* Header with Month/Year Picker */}
       <View style={styles.header}>
         <Text style={styles.title}>Team Salaries</Text>
-        <View style={styles.pickerContainer}>
-          <Picker
-            selectedValue={selectedMonth}
-            onValueChange={setSelectedMonth}
-            style={styles.picker}
-          >
-            {months.map(m => (
-              <Picker.Item key={m.value} label={m.label} value={m.value} />
-            ))}
-          </Picker>
-          <Picker
-            selectedValue={selectedYear}
-            onValueChange={setSelectedYear}
-            style={styles.picker}
-          >
-            {years.map(y => (
-              <Picker.Item key={y} label={y.toString()} value={y} />
-            ))}
-          </Picker>
+        <View style={styles.headerPickers}>
+          <Dropdown
+            style={styles.headerDropdown}
+            placeholderStyle={styles.placeholderStyle}
+            selectedTextStyle={styles.selectedTextStyle}
+            containerStyle={styles.dropdownPopup}
+            data={months}
+            maxHeight={300}
+            labelField="label"
+            valueField="value"
+            placeholder="Month"
+            value={selectedMonth}
+            onChange={item => setSelectedMonth(item.value)}
+          />
+          <Dropdown
+            style={styles.headerDropdown}
+            placeholderStyle={styles.placeholderStyle}
+            selectedTextStyle={styles.selectedTextStyle}
+            containerStyle={styles.dropdownPopup}
+            data={years.map(y => ({ label: y.toString(), value: y }))}
+            maxHeight={300}
+            labelField="label"
+            valueField="value"
+            placeholder="Year"
+            value={selectedYear}
+            onChange={item => setSelectedYear(item.value)}
+          />
         </View>
         <TouchableOpacity
           style={styles.calculateButton}
@@ -245,22 +253,22 @@ const ManagerSalaryScreen = () => {
             <Text style={styles.modalTitle}>Calculate Salary</Text>
 
             <Text style={styles.label}>Select Employee</Text>
-            <View style={styles.pickerWrapper}>
-              <Picker
-                selectedValue={selectedEmployee}
-                onValueChange={setSelectedEmployee}
-                style={styles.modalPicker}
-              >
-                <Picker.Item label="Select an employee..." value="" />
-                {employees.map(emp => (
-                  <Picker.Item
-                    key={emp.id}
-                    label={`${emp.firstName} ${emp.lastName} (${emp.email})`}
-                    value={emp.id}
-                  />
-                ))}
-              </Picker>
-            </View>
+            <Dropdown
+              style={styles.modalDropdown}
+              placeholderStyle={styles.placeholderStyle}
+              selectedTextStyle={styles.selectedTextStyle}
+              inputSearchStyle={styles.inputSearchStyle}
+              containerStyle={styles.dropdownPopup}
+              data={employees.map(emp => ({ label: `${emp.firstName} ${emp.lastName} (${emp.email})`, value: emp.id }))}
+              search
+              maxHeight={300}
+              labelField="label"
+              valueField="value"
+              placeholder="Select an employee..."
+              searchPlaceholder="Search..."
+              value={selectedEmployee}
+              onChange={item => setSelectedEmployee(item.value)}
+            />
 
             <Text style={styles.label}>Period</Text>
             <Text style={styles.periodText}>
@@ -321,15 +329,45 @@ const styles = StyleSheet.create({
     color: '#333',
     marginBottom: 12,
   },
-  pickerContainer: {
+  headerPickers: {
     flexDirection: 'row',
     gap: 8,
     marginBottom: 12,
   },
-  picker: {
+  headerDropdown: {
     flex: 1,
+    height: 45,
     backgroundColor: '#f5f5f5',
     borderRadius: 8,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+  },
+  modalDropdown: {
+    height: 50,
+    backgroundColor: '#f5f5f5',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+  },
+  placeholderStyle: {
+    fontSize: 14,
+    color: '#94a3b8',
+  },
+  selectedTextStyle: {
+    fontSize: 14,
+    color: '#333',
+  },
+  inputSearchStyle: {
+    height: 40,
+    fontSize: 14,
+  },
+  dropdownPopup: {
+    borderRadius: 12,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
   },
   calculateButton: {
     backgroundColor: '#4caf50',
@@ -464,14 +502,6 @@ const styles = StyleSheet.create({
     color: '#333',
     marginBottom: 8,
     marginTop: 12,
-  },
-  pickerWrapper: {
-    backgroundColor: '#f5f5f5',
-    borderRadius: 8,
-    overflow: 'hidden',
-  },
-  modalPicker: {
-    backgroundColor: 'transparent',
   },
   periodText: {
     fontSize: 16,
