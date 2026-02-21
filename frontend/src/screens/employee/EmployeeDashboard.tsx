@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import {
   View,
   Text,
@@ -11,17 +11,21 @@ import {
   RefreshControl,
   AppState,
 } from 'react-native';
+import { useSelector } from 'react-redux';
+import { RootState } from '../../store';
 import * as Location from 'expo-location';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AuthService } from '../../services/AuthService';
 import { AttendanceService, LocationUpdateResult } from '../../services/AttendanceService';
 import { ApiService } from '../../services/ApiService';
+import NotificationBell from '../../components/NotificationBell';
 
 const FACE_VERIFICATION_KEY = 'face_verification_status';
 const LOCATION_TRACKING_INTERVAL = 30000; // 30 seconds
 
 const EmployeeDashboard = () => {
   const navigation = useNavigation<any>();
+  const { countsByType } = useSelector((state: RootState) => state.notification);
   const [user, setUser] = useState<any>(null);
   const [todayAttendance, setTodayAttendance] = useState<any>(null);
   const [monthlyStats, setMonthlyStats] = useState<any>(null);
@@ -45,7 +49,7 @@ const EmployeeDashboard = () => {
       checkFaceVerificationOnce(); // Check only once on mount
       startLocationTracking(); // Start automatic location tracking
     }, 100);
-    
+
     // Update clock every second
     const timer = setInterval(() => {
       setCurrentTime(new Date());
@@ -76,25 +80,32 @@ const EmployeeDashboard = () => {
     appState.current = nextAppState as any;
   };
 
+  useFocusEffect(
+    React.useCallback(() => {
+      // Refresh the verification status when returning to dashboard
+      checkFaceVerificationStatus();
+    }, [])
+  );
+
   // Start automatic location tracking
   const startLocationTracking = async () => {
     if (locationTrackingRef.current) return; // Already tracking
-    
+
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
         console.log('Location permission not granted');
         return;
       }
-      
+
       // Initial location update
       await updateLocationAndStatus();
-      
+
       // Set up interval for periodic updates
       locationTrackingRef.current = setInterval(async () => {
         await updateLocationAndStatus();
       }, LOCATION_TRACKING_INTERVAL);
-      
+
       console.log('Location tracking started');
     } catch (error) {
       console.error('Error starting location tracking:', error);
@@ -116,19 +127,19 @@ const EmployeeDashboard = () => {
       const loc = await Location.getCurrentPositionAsync({
         accuracy: Location.Accuracy.Balanced,
       });
-      
+
       setLocation(loc);
-      
+
       // Send location to backend for auto check-in/check-out
       const result = await AttendanceService.updateLocation(
         loc.coords.latitude,
         loc.coords.longitude,
-        loc.coords.accuracy
+        loc.coords.accuracy || 0
       );
-      
+
       if (result) {
         setLocationStatus(result.status);
-        
+
         // If status changed to auto checked in/out, show notification and reload
         if (result.status === 'AUTO_CHECKED_IN') {
           const geofenceInfo = result.geofenceName ? ` at ${result.geofenceName}` : '';
@@ -157,11 +168,11 @@ const EmployeeDashboard = () => {
   // Check local storage first, only call API if needed (once per day)
   const checkFaceVerificationOnce = async () => {
     if (faceCheckDone) return;
-    
+
     try {
       const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
       const stored = await AsyncStorage.getItem(FACE_VERIFICATION_KEY);
-      
+
       if (stored) {
         const parsed = JSON.parse(stored);
         if (parsed.date === today && parsed.verified) {
@@ -172,7 +183,7 @@ const EmployeeDashboard = () => {
           return;
         }
       }
-      
+
       // Not verified today, check with API
       await checkFaceVerificationStatus();
       setFaceCheckDone(true);
@@ -185,7 +196,7 @@ const EmployeeDashboard = () => {
   const loadData = async () => {
     try {
       setLoading(true);
-      
+
       // First verify we have a valid token
       const token = await AuthService.getToken();
       if (!token) {
@@ -209,7 +220,7 @@ const EmployeeDashboard = () => {
 
       // Try to get cached user first
       let userDataFromApi = await AuthService.getCurrentUser();
-      
+
       // Fetch attendance and stats (these are less critical)
       const [attendance, stats] = await Promise.all([
         AttendanceService.getTodayAttendance().catch((err) => {
@@ -221,7 +232,7 @@ const EmployeeDashboard = () => {
           return null;
         }),
       ]);
-      
+
       // Try to refresh user from API (but don't fail if it errors)
       try {
         const freshUser = await ApiService.getCurrentUser();
@@ -231,7 +242,7 @@ const EmployeeDashboard = () => {
       } catch (userError) {
         console.log('Could not refresh user from API, using cached data');
       }
-      
+
       setUser(userDataFromApi);
       setTodayAttendance(attendance);
       setMonthlyStats(stats);
@@ -259,7 +270,7 @@ const EmployeeDashboard = () => {
       const location = await Location.getCurrentPositionAsync({
         accuracy: Location.Accuracy.High,
       });
-      
+
       setLocation(location);
       return location;
     } catch (error) {
@@ -274,10 +285,10 @@ const EmployeeDashboard = () => {
       const result = await ApiService.isFaceVerificationRequired();
       const verified = result.verifiedToday;
       const registered = result.faceRegistered !== false;
-      
+
       setFaceVerifiedToday(verified);
       setFaceRegistered(registered);
-      
+
       // Save to local storage so we don't check again today
       if (verified) {
         const today = new Date().toISOString().split('T')[0];
@@ -311,23 +322,11 @@ const EmployeeDashboard = () => {
   };
 
   const handleFaceRegistration = () => {
-    navigation.navigate('FaceRegistration', {
-      onRegistrationComplete: async (success: boolean) => {
-        if (success) {
-          setFaceRegistered(true);
-        }
-      },
-    });
+    navigation.navigate('FaceRegistration');
   };
 
   const handleFaceVerification = () => {
-    navigation.navigate('FaceVerification', {
-      onVerificationComplete: async (success: boolean) => {
-        if (success) {
-          await onFaceVerificationComplete(true);
-        }
-      },
-    });
+    navigation.navigate('FaceVerification');
   };
 
   const handleCheckIn = async () => {
@@ -360,7 +359,7 @@ const EmployeeDashboard = () => {
 
       setActionLoading(true);
       const location = await getCurrentLocation();
-      
+
       if (!location) {
         return;
       }
@@ -369,27 +368,27 @@ const EmployeeDashboard = () => {
       const result = await AttendanceService.checkIn(
         location.coords.latitude,
         location.coords.longitude,
-        location.coords.accuracy
+        location.coords.accuracy || 0
       );
 
       console.log('Check-in result:', JSON.stringify(result, null, 2));
-      
+
       // Immediately update the state with the new check-in data
       if (result) {
         console.log('Updating todayAttendance state with:', result);
         setTodayAttendance(result);
       }
-      
+
       Alert.alert('Success', 'Checked in successfully!');
       // Reload data to ensure everything is in sync
       console.log('Reloading data...');
       await loadData();
     } catch (error: any) {
       console.error('Check-in error:', error);
-      const errorMessage = error.response?.data?.message || 
-                          error.response?.data?.error || 
-                          error.message || 
-                          'Failed to check in';
+      const errorMessage = error.response?.data?.message ||
+        error.response?.data?.error ||
+        error.message ||
+        'Failed to check in';
       Alert.alert('Check-in Failed', errorMessage);
     } finally {
       setActionLoading(false);
@@ -400,7 +399,7 @@ const EmployeeDashboard = () => {
     try {
       setActionLoading(true);
       const location = await getCurrentLocation();
-      
+
       if (!location) {
         return;
       }
@@ -408,7 +407,7 @@ const EmployeeDashboard = () => {
       const result = await AttendanceService.checkOut(
         location.coords.latitude,
         location.coords.longitude,
-        location.coords.accuracy
+        location.coords.accuracy || 0
       );
 
       // Immediately update the state with the new check-out data
@@ -421,10 +420,10 @@ const EmployeeDashboard = () => {
       await loadData();
     } catch (error: any) {
       console.error('Check-out error:', error);
-      const errorMessage = error.response?.data?.message || 
-                          error.response?.data?.error || 
-                          error.message || 
-                          'Failed to check out';
+      const errorMessage = error.response?.data?.message ||
+        error.response?.data?.error ||
+        error.message ||
+        'Failed to check out';
       Alert.alert('Check-out Failed', errorMessage);
     } finally {
       setActionLoading(false);
@@ -434,23 +433,23 @@ const EmployeeDashboard = () => {
   const formatTime = (dateString: string) => {
     if (!dateString) return '--:--';
     const date = new Date(dateString);
-    return date.toLocaleTimeString('en-US', { 
-      hour: '2-digit', 
+    return date.toLocaleTimeString('en-US', {
+      hour: '2-digit',
       minute: '2-digit',
-      hour12: true 
+      hour12: true
     });
   };
 
   const formatDuration = (checkInTime: string, checkOutTime?: string) => {
     if (!checkInTime) return '--';
-    
+
     const start = new Date(checkInTime);
     const end = checkOutTime ? new Date(checkOutTime) : new Date();
     const diff = Math.floor((end.getTime() - start.getTime()) / 1000 / 60); // minutes
-    
+
     const hours = Math.floor(diff / 60);
     const minutes = diff % 60;
-    
+
     return `${hours}h ${minutes}m`;
   };
 
@@ -481,22 +480,27 @@ const EmployeeDashboard = () => {
     >
       {/* Header Section */}
       <View style={styles.header}>
-        <Text style={styles.greeting}>{getGreeting()},</Text>
-        <Text style={styles.userName}>{user?.firstName || 'Employee'}</Text>
+        <View style={styles.headerTop}>
+          <View>
+            <Text style={styles.greeting}>{getGreeting()},</Text>
+            <Text style={styles.userName}>{user?.firstName || 'Employee'}</Text>
+          </View>
+          <NotificationBell />
+        </View>
         <Text style={styles.dateTime}>
-          {currentTime.toLocaleDateString('en-US', { 
-            weekday: 'long', 
-            year: 'numeric', 
-            month: 'long', 
-            day: 'numeric' 
+          {currentTime.toLocaleDateString('en-US', {
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
           })}
         </Text>
         <Text style={styles.clock}>
-          {currentTime.toLocaleTimeString('en-US', { 
-            hour: '2-digit', 
+          {currentTime.toLocaleTimeString('en-US', {
+            hour: '2-digit',
             minute: '2-digit',
             second: '2-digit',
-            hour12: true 
+            hour12: true
           })}
         </Text>
       </View>
@@ -532,7 +536,7 @@ const EmployeeDashboard = () => {
             )}
           </View>
         </View>
-        
+
         {isCheckedIn && (
           <View style={styles.workingTimeContainer}>
             <Text style={styles.workingTimeLabel}>Working Time</Text>
@@ -541,7 +545,7 @@ const EmployeeDashboard = () => {
             </Text>
           </View>
         )}
-        
+
         {isCheckedOut && (
           <View style={styles.completedContainer}>
             <Text style={styles.completedLabel}>Total Working Time</Text>
@@ -550,7 +554,7 @@ const EmployeeDashboard = () => {
             </Text>
           </View>
         )}
-        
+
         {todayAttendance && (
           <View style={styles.attendanceInfo}>
             <Text style={styles.attendanceInfoText}>
@@ -585,7 +589,7 @@ const EmployeeDashboard = () => {
 
       {/* Face Registration Banner - Show if face not registered */}
       {!faceRegistered && !isCheckedIn && !isCheckedOut && (
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.faceRegistrationBanner}
           onPress={handleFaceRegistration}
         >
@@ -602,7 +606,7 @@ const EmployeeDashboard = () => {
 
       {/* Face Verification Banner - Show if registered but not verified today */}
       {faceRegistered && !faceVerifiedToday && !isCheckedIn && !isCheckedOut && (
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.faceVerificationBanner}
           onPress={handleFaceVerification}
         >
@@ -688,6 +692,7 @@ const EmployeeDashboard = () => {
       {/* Monthly Stats */}
       <View style={styles.quickStats}>
         <Text style={styles.sectionTitle}>Monthly Attendance ({new Date().toLocaleDateString('en-US', { month: 'long' })})</Text>
+
         <View style={styles.statsGrid}>
           <View style={styles.statCard}>
             <View style={[styles.statCardInner, styles.statCardPresent]}>
@@ -787,13 +792,14 @@ const EmployeeDashboard = () => {
               <Text style={styles.leaveActionText}>Apply Leave</Text>
             </TouchableOpacity>
           </View>
-          
+
           <View style={styles.leaveActionButton}>
             <TouchableOpacity
               style={styles.leaveActionButtonInner}
               onPress={() => navigation.navigate('LeaveHistory')}
             >
               <Text style={styles.leaveActionText}>Leave History</Text>
+              {countsByType['LEAVE_APPROVAL'] > 0 && <View style={styles.unreadDot} />}
             </TouchableOpacity>
           </View>
         </View>
@@ -809,6 +815,7 @@ const EmployeeDashboard = () => {
               onPress={() => navigation.navigate('EmployeeSalary')}
             >
               <Text style={styles.leaveActionText}>View My Salary</Text>
+              {countsByType['SALARY_UPDATE'] > 0 && <View style={styles.unreadDot} />}
             </TouchableOpacity>
           </View>
         </View>
@@ -835,6 +842,24 @@ const styles = StyleSheet.create({
     paddingBottom: 30,
     borderBottomLeftRadius: 20,
     borderBottomRightRadius: 20,
+    zIndex: 1,
+  },
+  headerTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 10,
+  },
+  unreadDot: {
+    position: 'absolute',
+    top: 5,
+    right: 5,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#F44336',
+    borderWidth: 1,
+    borderColor: '#fff',
   },
   greeting: {
     fontSize: 16,
@@ -856,8 +881,26 @@ const styles = StyleSheet.create({
   clock: {
     fontSize: 24,
     fontWeight: '600',
-    color: '#fff',
-    marginTop: 5,
+    color: '#333',
+    marginBottom: 15,
+  },
+  chartCard: {
+    backgroundColor: '#fff',
+    borderRadius: 15,
+    padding: 15,
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 5,
+    alignItems: 'center',
+  },
+  chartTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#666',
+    marginBottom: 10,
   },
   statusCard: {
     backgroundColor: '#fff',
@@ -970,17 +1013,6 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     color: '#007AFF',
-  },
-  attendanceInfo: {
-    marginTop: 16,
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#f0f0f0',
-  },
-  attendanceInfoText: {
-    fontSize: 12,
-    color: '#666',
-    marginBottom: 4,
   },
   actionContainer: {
     paddingHorizontal: 20,

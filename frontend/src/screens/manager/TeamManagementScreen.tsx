@@ -71,8 +71,11 @@ const TeamManagementScreen = () => {
     setLoading(true);
     try {
       const response = await ApiService.get('/teams/manager/me');
-      setTeams(response.data ?? []);
-    } catch (error) {
+      console.log('Teams response:', JSON.stringify(response.data));
+      const teamsData = response.data ?? [];
+      setTeams(Array.isArray(teamsData) ? teamsData : []);
+    } catch (error: any) {
+      console.error('Error loading teams:', error?.message, error?.response?.status, error?.response?.data);
       setTeams([]);
     } finally {
       setLoading(false);
@@ -212,6 +215,29 @@ const TeamManagementScreen = () => {
       setSavingWorkHours(false);
     }
   };
+  const handleDeleteTeam = (teamId: string, teamName: string) => {
+    Alert.alert(
+      'Delete Team',
+      `Are you sure you want to delete the team "${teamName}"? This action cannot be undone.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await ApiService.deleteTeam(teamId);
+              loadTeams();
+              Alert.alert('Success', 'Team deleted successfully');
+            } catch (error) {
+              Alert.alert('Error', 'Failed to delete team');
+            }
+          },
+        },
+      ]
+    );
+  };
+
 
 
   return (
@@ -244,6 +270,7 @@ const TeamManagementScreen = () => {
                     { label: 'View Employees', value: 'view' },
                     { label: 'Set Geofence', value: 'geofence' },
                     { label: 'Work Hours', value: 'hours' },
+                    { label: 'Delete Team', value: 'delete' },
                   ]}
                   maxHeight={300}
                   labelField="label"
@@ -255,6 +282,7 @@ const TeamManagementScreen = () => {
                     if (item.value === 'view') handleShowEmployees(team.id);
                     if (item.value === 'geofence') handleShowGeofenceModal(team.id);
                     if (item.value === 'hours') handleShowWorkHoursModal(team.id);
+                    if (item.value === 'delete') handleDeleteTeam(team.id, team.name);
                   }}
                   renderRightIcon={() => (
                     <Ionicons name="ellipsis-vertical" size={24} color="#64748b" />

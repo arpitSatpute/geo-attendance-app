@@ -10,11 +10,16 @@ import {
   Alert,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { useSelector } from 'react-redux';
+import { RootState } from '../../store';
 import { AuthService } from '../../services/AuthService';
 import { ApiService } from '../../services/ApiService';
+import NotificationBell from '../../components/NotificationBell';
+import { NotificationService, Notification } from '../../services/NotificationService';
 
 const ManagerDashboard = () => {
   const navigation = useNavigation<any>();
+  const { countsByType } = useSelector((state: RootState) => state.notification);
   const [user, setUser] = useState<any>(null);
   const [teamData, setTeamData] = useState<any>(null);
   const [teamLocations, setTeamLocations] = useState<any[]>([]);
@@ -31,7 +36,20 @@ const ManagerDashboard = () => {
       setCurrentTime(new Date());
     }, 1000);
 
-    return () => clearInterval(timer);
+    // Listen for real-time updates
+    const handleNotification = (notif: Notification) => {
+      if (notif.type === 'LEAVE_REQUEST') {
+        console.log('Received leave request notification, refreshing dashboard...');
+        loadData();
+      }
+    };
+
+    NotificationService.addListener(handleNotification);
+
+    return () => {
+      clearInterval(timer);
+      NotificationService.removeListener(handleNotification);
+    };
   }, []);
 
   const loadData = async () => {
@@ -109,9 +127,14 @@ const ManagerDashboard = () => {
     >
       {/* Header Section */}
       <View style={styles.header}>
-        <Text style={styles.greeting}>{getGreeting()},</Text>
-        <Text style={styles.userName}>{user?.firstName || 'Manager'}</Text>
-        <Text style={styles.role}>Team Manager</Text>
+        <View style={styles.headerTop}>
+          <View>
+            <Text style={styles.greeting}>{getGreeting()},</Text>
+            <Text style={styles.userName}>{user?.firstName || 'Manager'}</Text>
+            <Text style={styles.role}>Team Manager</Text>
+          </View>
+          <NotificationBell />
+        </View>
         <Text style={styles.clock}>
           {currentTime.toLocaleTimeString('en-US', {
             hour: '2-digit',
@@ -125,6 +148,7 @@ const ManagerDashboard = () => {
       {/* Team Statistics */}
       <View style={styles.statsContainer}>
         <Text style={styles.sectionTitle}>Team Overview</Text>
+
         <View style={styles.statsGrid}>
           <View style={[styles.statCard, styles.primaryCard]}>
             <Text style={styles.statNumber}>{teamData?.totalMembers || 0}</Text>
@@ -165,6 +189,7 @@ const ManagerDashboard = () => {
           >
             <Text style={styles.actionIcon}>✅</Text>
             <Text style={styles.actionText}>Approve Leaves</Text>
+            {countsByType['LEAVE_REQUEST'] > 0 && <View style={styles.unreadDot} />}
           </TouchableOpacity>
         </View>
         <View style={styles.actionsGrid}>
@@ -174,6 +199,7 @@ const ManagerDashboard = () => {
           >
             <Text style={styles.actionIcon}>💰</Text>
             <Text style={styles.actionText}>Salary Management</Text>
+            {countsByType['SALARY_UPDATE'] > 0 && <View style={styles.unreadDot} />}
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.actionButton}
@@ -206,6 +232,24 @@ const styles = StyleSheet.create({
     paddingBottom: 30,
     borderBottomLeftRadius: 20,
     borderBottomRightRadius: 20,
+    zIndex: 1,
+  },
+  headerTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 5,
+  },
+  unreadDot: {
+    position: 'absolute',
+    top: 5,
+    right: 5,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#F44336',
+    borderWidth: 1,
+    borderColor: '#fff',
   },
   greeting: {
     fontSize: 16,
@@ -294,6 +338,7 @@ const styles = StyleSheet.create({
     padding: 20,
     borderRadius: 15,
     alignItems: 'center',
+    position: 'relative',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,

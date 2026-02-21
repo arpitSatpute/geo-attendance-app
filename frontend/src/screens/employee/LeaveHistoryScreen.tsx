@@ -9,6 +9,7 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { LeaveService, LeaveRequest } from '../../services/LeaveService';
+import { NotificationService } from '../../services/NotificationService';
 
 const LeaveHistoryScreen = ({ navigation }: any) => {
   const [leaves, setLeaves] = useState<LeaveRequest[]>([]);
@@ -31,6 +32,19 @@ const LeaveHistoryScreen = ({ navigation }: any) => {
 
   useEffect(() => {
     fetchLeaves();
+
+    // Listen for real-time updates
+    const handleNotification = (notif: any) => {
+      if (notif.type === 'LEAVE_APPROVAL') {
+        console.log('Received leave approval notification, refreshing list...');
+        fetchLeaves();
+      }
+    };
+
+    NotificationService.addListener(handleNotification);
+    return () => {
+      NotificationService.removeListener(handleNotification);
+    };
   }, []);
 
   const onRefresh = async () => {

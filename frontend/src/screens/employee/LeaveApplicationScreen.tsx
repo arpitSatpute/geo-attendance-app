@@ -11,51 +11,53 @@ import {
   Platform,
 } from 'react-native';
 import { Dropdown } from 'react-native-element-dropdown';
+import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { LeaveService } from '../../services/LeaveService';
 
 type LeaveType = 'SICK' | 'CASUAL' | 'ANNUAL' | 'UNPAID';
 
 const LeaveApplicationScreen = ({ navigation }: any) => {
   const [leaveType, setLeaveType] = useState<LeaveType>('CASUAL');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
+  const [startDate, setStartDate] = useState(new Date());
+  const [endDate, setEndDate] = useState(new Date());
+  const [showStartPicker, setShowStartPicker] = useState(false);
+  const [showEndPicker, setShowEndPicker] = useState(false);
+  const [startDateSelected, setStartDateSelected] = useState(false);
+  const [endDateSelected, setEndDateSelected] = useState(false);
   const [reason, setReason] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleDateInput = (text: string, setter: (value: string) => void) => {
-    // Format: YYYY-MM-DD
-    let cleaned = text.replace(/[^0-9]/g, '');
-    if (cleaned.length >= 4) {
-      cleaned = cleaned.slice(0, 4) + '-' + cleaned.slice(4);
-    }
-    if (cleaned.length >= 7) {
-      cleaned = cleaned.slice(0, 7) + '-' + cleaned.slice(7, 9);
-    }
-    setter(cleaned.slice(0, 10));
+  const formatDateString = (date: Date) => {
+    return date.toISOString().split('T')[0];
   };
 
-  const validateDates = (): boolean => {
-    if (!startDate || !endDate) {
-      Alert.alert('Error', 'Please enter both start and end dates');
+  const onStartDateChange = (event: DateTimePickerEvent, selectedDate?: Date) => {
+    setShowStartPicker(Platform.OS === 'ios');
+    if (selectedDate) {
+      setStartDate(selectedDate);
+      setStartDateSelected(true);
+      if (selectedDate > endDate) {
+        setEndDate(selectedDate);
+      }
+    }
+  };
+
+  const onEndDateChange = (event: DateTimePickerEvent, selectedDate?: Date) => {
+    setShowEndPicker(Platform.OS === 'ios');
+    if (selectedDate) {
+      setEndDate(selectedDate);
+      setEndDateSelected(true);
+    }
+  };
+
+  const validateDates = (silent: boolean = false): boolean => {
+    if (!startDateSelected || !endDateSelected) {
+      if (!silent) Alert.alert('Error', 'Please select both start and end dates');
       return false;
     }
 
-    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
-    if (!dateRegex.test(startDate) || !dateRegex.test(endDate)) {
-      Alert.alert('Error', 'Please enter dates in YYYY-MM-DD format');
-      return false;
-    }
-
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-
-    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
-      Alert.alert('Error', 'Invalid date format');
-      return false;
-    }
-
-    if (start > end) {
-      Alert.alert('Error', 'Start date must be before or equal to end date');
+    if (startDate > endDate) {
+      if (!silent) Alert.alert('Error', 'Start date must be before or equal to end date');
       return false;
     }
 
@@ -74,8 +76,8 @@ const LeaveApplicationScreen = ({ navigation }: any) => {
     try {
       await LeaveService.applyLeave({
         leaveType,
-        startDate,
-        endDate,
+        startDate: formatDateString(startDate),
+        endDate: formatDateString(endDate),
         reason: reason.trim(),
       });
 
@@ -86,8 +88,10 @@ const LeaveApplicationScreen = ({ navigation }: any) => {
           {
             text: 'OK',
             onPress: () => {
-              setStartDate('');
-              setEndDate('');
+              setStartDate(new Date());
+              setEndDate(new Date());
+              setStartDateSelected(false);
+              setEndDateSelected(false);
               setReason('');
               navigation.goBack();
             },
@@ -101,8 +105,8 @@ const LeaveApplicationScreen = ({ navigation }: any) => {
     }
   };
 
-  const days = startDate && endDate && validateDates()
-    ? LeaveService.calculateDays(startDate, endDate)
+  const days = startDateSelected && endDateSelected && validateDates(true)
+    ? LeaveService.calculateDays(formatDateString(startDate), formatDateString(endDate))
     : 0;
 
   return (
@@ -128,25 +132,43 @@ const LeaveApplicationScreen = ({ navigation }: any) => {
           onChange={item => setLeaveType(item.value as LeaveType)}
         />
 
-        <Text style={styles.label}>Start Date (YYYY-MM-DD)</Text>
-        <TextInput
+        <Text style={styles.label}>Start Date</Text>
+        <TouchableOpacity
           style={styles.dateInput}
-          value={startDate}
-          onChangeText={(text) => handleDateInput(text, setStartDate)}
-          placeholder="2024-01-15"
-          keyboardType="numeric"
-          maxLength={10}
-        />
+          onPress={() => setShowStartPicker(true)}
+        >
+          <Text style={[styles.dateText, !startDateSelected && styles.placeholderText]}>
+            {startDateSelected ? formatDateString(startDate) : 'Select Start Date'}
+          </Text>
+        </TouchableOpacity>
+        {showStartPicker && (
+          <DateTimePicker
+            value={startDate}
+            mode="date"
+            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+            onChange={onStartDateChange}
+            minimumDate={new Date()}
+          />
+        )}
 
-        <Text style={styles.label}>End Date (YYYY-MM-DD)</Text>
-        <TextInput
+        <Text style={styles.label}>End Date</Text>
+        <TouchableOpacity
           style={styles.dateInput}
-          value={endDate}
-          onChangeText={(text) => handleDateInput(text, setEndDate)}
-          placeholder="2024-01-20"
-          keyboardType="numeric"
-          maxLength={10}
-        />
+          onPress={() => setShowEndPicker(true)}
+        >
+          <Text style={[styles.dateText, !endDateSelected && styles.placeholderText]}>
+            {endDateSelected ? formatDateString(endDate) : 'Select End Date'}
+          </Text>
+        </TouchableOpacity>
+        {showEndPicker && (
+          <DateTimePicker
+            value={endDate}
+            mode="date"
+            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+            onChange={onEndDateChange}
+            minimumDate={startDate}
+          />
+        )}
 
         {days > 0 && (
           <View style={styles.daysInfo}>
@@ -230,10 +252,17 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 8,
     padding: 12,
-    fontSize: 16,
     borderWidth: 1,
     borderColor: '#e0e0e0',
     marginBottom: 10,
+    justifyContent: 'center',
+  },
+  dateText: {
+    fontSize: 16,
+    color: '#333',
+  },
+  placeholderText: {
+    color: '#999',
   },
   daysInfo: {
     backgroundColor: '#E3F2FD',
