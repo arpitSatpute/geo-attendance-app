@@ -7,11 +7,14 @@ import {
   ActivityIndicator,
   RefreshControl,
   TouchableOpacity,
+  Dimensions,
 } from 'react-native';
+import { PieChart, LineChart } from 'react-native-chart-kit';
 import { AttendanceService } from '../../services/AttendanceService';
 
 const AttendanceHistoryScreen = () => {
   const [history, setHistory] = useState<any[]>([]);
+  const [monthlyStats, setMonthlyStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
@@ -26,13 +29,20 @@ const AttendanceHistoryScreen = () => {
       setLoading(true);
       const startDate = new Date(selectedYear, selectedMonth, 1);
       const endDate = new Date(selectedYear, selectedMonth + 1, 0);
-      
-      const records = await AttendanceService.getAttendanceHistory(
-        startDate.toISOString().split('T')[0],
-        endDate.toISOString().split('T')[0]
-      ).catch(() => []);
-      
+
+      const [records, stats] = await Promise.all([
+        AttendanceService.getAttendanceHistory(
+          startDate.toISOString().split('T')[0],
+          endDate.toISOString().split('T')[0]
+        ).catch(() => []),
+        AttendanceService.getStatistics(
+          startDate.toISOString().split('T')[0],
+          endDate.toISOString().split('T')[0]
+        ).catch(() => null)
+      ]);
+
       setHistory(records || []);
+      setMonthlyStats(stats);
     } catch (error) {
       console.error('Error loading history:', error);
     } finally {
@@ -48,21 +58,21 @@ const AttendanceHistoryScreen = () => {
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { 
+    return date.toLocaleDateString('en-US', {
       weekday: 'short',
-      year: 'numeric', 
-      month: 'short', 
-      day: 'numeric' 
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
     });
   };
 
   const formatTime = (dateString: string) => {
     if (!dateString) return '--:--';
     const date = new Date(dateString);
-    return date.toLocaleTimeString('en-US', { 
-      hour: '2-digit', 
+    return date.toLocaleTimeString('en-US', {
+      hour: '2-digit',
       minute: '2-digit',
-      hour12: true 
+      hour12: true
     });
   };
 
@@ -71,16 +81,16 @@ const AttendanceHistoryScreen = () => {
     const start = new Date(checkIn);
     const end = checkOut ? new Date(checkOut) : new Date();
     const diff = Math.floor((end.getTime() - start.getTime()) / 1000 / 60);
-    
+
     const hours = Math.floor(diff / 60);
     const minutes = diff % 60;
     return `${hours}h ${minutes}m`;
   };
 
   const getMonthName = () => {
-    return new Date(selectedYear, selectedMonth).toLocaleDateString('en-US', { 
+    return new Date(selectedYear, selectedMonth).toLocaleDateString('en-US', {
       month: 'long',
-      year: 'numeric' 
+      year: 'numeric'
     });
   };
 
@@ -105,13 +115,73 @@ const AttendanceHistoryScreen = () => {
   const totalDays = history.length;
   const totalHours = history.reduce((sum, record) => {
     if (record.checkInTime && record.checkOutTime) {
-      const start = new Date(record.checkInTime);
-      const end = new Date(record.checkOutTime);
-      const hours = (end.getTime() - start.getTime()) / 1000 / 60 / 60;
-      return sum + hours;
+      // Ensure proper date parsing - backend sends LocalDateTime like "2026-02-21T09:00:00"
+      const checkIn = record.checkInTime.includes('Z') || record.checkInTime.includes('+')
+        ? record.checkInTime : record.checkInTime + 'Z';
+      const checkOut = record.checkOutTime.includes('Z') || record.checkOutTime.includes('+')
+        ? record.checkOutTime : record.checkOutTime + 'Z';
+      const start = new Date(checkIn);
+      const end = new Date(checkOut);
+      if (!isNaN(start.getTime()) && !isNaN(end.getTime())) {
+        const hours = (end.getTime() - start.getTime()) / 1000 / 60 / 60;
+        return sum + Math.max(0, hours);
+      }
     }
     return sum;
   }, 0);
+
+  const displayHours = Math.floor(totalHours);
+  const displayMinutes = Math.round((totalHours - displayHours) * 60);
+
+  const getChartData = () => {
+    // Sort history chronologically
+    const sortedHistory = [...history].sort((a, b) => {
+      const dateA = new Date(a.date || a.checkInTime).getTime();
+      const dateB = new Date(b.date || b.checkInTime).getTime();
+      return dateA - dateB;
+    });
+
+    // Get up to the last 7 records
+    const recentRecords = sortedHistory.slice(-7);
+
+    if (recentRecords.length === 0) {
+      return {
+        labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+        data: [0, 0, 0, 0, 0, 0, 0]
+      };
+    }
+
+    const labels: string[] = [];
+    const data: number[] = [];
+
+    recentRecords.forEach(record => {
+      const date = new Date(record.date || record.checkInTime);
+      labels.push(date.toLocaleDateString('en-US', { weekday: 'short' }));
+
+      let hours = 0;
+      if (record.checkInTime && record.checkOutTime) {
+        const checkIn = record.checkInTime.includes('Z') || record.checkInTime.includes('+')
+          ? record.checkInTime : record.checkInTime + 'Z';
+        const checkOut = record.checkOutTime.includes('Z') || record.checkOutTime.includes('+')
+          ? record.checkOutTime : record.checkOutTime + 'Z';
+        const diff = new Date(checkOut).getTime() - new Date(checkIn).getTime();
+        if (!isNaN(diff)) {
+          hours = Math.max(0, diff / 1000 / 3600);
+        }
+      }
+      data.push(parseFloat(hours.toFixed(1)));
+    });
+
+    // Pad array if less than 7 days
+    while (labels.length < 7) {
+      labels.unshift('-');
+      data.unshift(0);
+    }
+
+    return { labels, data };
+  };
+
+  const chartData = getChartData();
 
   if (loading && !refreshing) {
     return (
@@ -141,18 +211,63 @@ const AttendanceHistoryScreen = () => {
           <Text style={styles.summaryLabel}>Days Present</Text>
         </View>
         <View style={styles.summaryCard}>
-          <Text style={styles.summaryNumber}>{Math.round(totalHours)}h</Text>
+          <Text style={styles.summaryNumber}>{displayHours}h {displayMinutes}m</Text>
           <Text style={styles.summaryLabel}>Total Hours</Text>
         </View>
       </View>
 
-      {/* Attendance List */}
       <ScrollView
         style={styles.listContainer}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
+        {/* Charts Section */}
+        <View style={styles.chartCard}>
+          <Text style={styles.chartTitle}>Monthly Summary</Text>
+          <PieChart
+            data={[
+              { name: 'Present', population: monthlyStats?.presentDays || 0, color: '#4CAF50', legendFontColor: '#7F7F7F' },
+              { name: 'Absent', population: monthlyStats?.absentDays || 0, color: '#F44336', legendFontColor: '#7F7F7F' },
+              { name: 'Late', population: monthlyStats?.lateDays || 0, color: '#FF9800', legendFontColor: '#7F7F7F' },
+            ]}
+            width={Dimensions.get('window').width - 40}
+            height={180}
+            chartConfig={{ color: (opacity = 1) => `rgba(0, 0, 0, ${opacity})` }}
+            accessor="population"
+            backgroundColor="transparent"
+            paddingLeft="15"
+            absolute
+          />
+        </View>
+
+        <View style={styles.chartCard}>
+          <Text style={styles.chartTitle}>Attendance Trend (Last 7 Days)</Text>
+          <LineChart
+            data={{
+              labels: chartData.labels,
+              datasets: [{
+                data: chartData.data
+              }]
+            }}
+            width={Dimensions.get('window').width - 40}
+            height={180}
+            chartConfig={{
+              backgroundColor: '#ffffff',
+              backgroundGradientFrom: '#ffffff',
+              backgroundGradientTo: '#ffffff',
+              decimalPlaces: 0,
+              color: (opacity = 1) => `rgba(33, 150, 243, ${opacity})`,
+              labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
+              style: { borderRadius: 16 },
+              propsForDots: { r: '6', strokeWidth: '2', stroke: '#2196F3' }
+            }}
+            bezier
+            style={{ marginVertical: 8, borderRadius: 16 }}
+          />
+        </View>
+
+        <Text style={styles.listTitle}>Attendance Records</Text>
         {history.length === 0 ? (
           <View style={styles.emptyState}>
             <Text style={styles.emptyText}>No attendance records for this month</Text>
@@ -171,7 +286,7 @@ const AttendanceHistoryScreen = () => {
                   </Text>
                 </View>
               </View>
-              
+
               <View style={styles.recordBody}>
                 <View style={styles.timeRow}>
                   <View style={styles.timeItem}>
@@ -194,14 +309,14 @@ const AttendanceHistoryScreen = () => {
                     )}
                   </View>
                 </View>
-                
+
                 <View style={styles.durationContainer}>
                   <Text style={styles.durationLabel}>Duration</Text>
                   <Text style={styles.durationValue}>
                     {calculateDuration(record.checkInTime, record.checkOutTime)}
                   </Text>
                 </View>
-                
+
                 {(record.checkInLatitude || record.status) && (
                   <View style={styles.recordDetails}>
                     {record.status && (
@@ -219,7 +334,7 @@ const AttendanceHistoryScreen = () => {
           ))
         )}
       </ScrollView>
-    </View>
+    </View >
   );
 };
 
@@ -256,6 +371,24 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#333',
   },
+  chartCard: {
+    backgroundColor: '#fff',
+    borderRadius: 15,
+    padding: 15,
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 5,
+    alignItems: 'center',
+  },
+  chartTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#666',
+    marginBottom: 10,
+  },
   summaryContainer: {
     flexDirection: 'row',
     padding: 20,
@@ -287,6 +420,13 @@ const styles = StyleSheet.create({
   listContainer: {
     flex: 1,
     paddingHorizontal: 20,
+  },
+  listTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 15,
+    marginTop: 5,
   },
   recordCard: {
     backgroundColor: '#fff',

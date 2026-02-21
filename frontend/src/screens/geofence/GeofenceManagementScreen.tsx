@@ -62,9 +62,14 @@ const GeofenceManagementScreen = () => {
   const loadGeofences = async () => {
     try {
       setLoading(true);
-      const response = await ApiService.get('/geofences').catch(() => ({ data: [] }));
+      const response = await ApiService.get('/geofences').catch((err: any) => {
+        console.error('Geofence fetch error:', err?.message, err?.response?.status);
+        return { data: [] };
+      });
+      console.log('Geofences response:', JSON.stringify(response.data));
       // Map backend field names to frontend interface
-      const mappedGeofences = (response.data || []).map((geo: any) => ({
+      const rawData = Array.isArray(response.data) ? response.data : [];
+      const mappedGeofences = rawData.map((geo: any) => ({
         id: geo.id,
         name: geo.name,
         latitude: geo.latitude,
@@ -74,8 +79,9 @@ const GeofenceManagementScreen = () => {
         active: geo.isActive !== undefined ? geo.isActive : geo.active,
       }));
       setGeofences(mappedGeofences);
-    } catch (error) {
-      console.error('Error loading geofences:', error);
+    } catch (error: any) {
+      console.error('Error loading geofences:', error?.message);
+      setGeofences([]);
     } finally {
       setLoading(false);
     }
