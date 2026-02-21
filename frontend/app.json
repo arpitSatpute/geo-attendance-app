@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "GeoAttendance Pro",
-    "slug": "geo-attendance-app",
+    "slug": "geoattend",
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
@@ -53,7 +53,7 @@
     ],
     "extra": {
       "eas": {
-        "projectId": "550e8400-e29b-41d4-a716-446655440000"
+        "projectId": "efa75685-b3cb-4ac6-a5d9-c11cc0ec08b6"
       },
       "apiUrl": "http://192.168.1.5:8080/api"
     }
