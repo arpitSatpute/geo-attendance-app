@@ -1,25 +1,20 @@
 spring:
+  autoconfigure:
+    exclude: org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration
   application:
     name: geo-attendance-backend
 
   # MongoDB configuration
   data:
     mongodb:
-      uri: mongodb://localhost:27017/geo_attendance
+      uri: ${SPRING_DATA_MONGODB_URI:mongodb://localhost:27017/geo_attendance}
       # For MongoDB with authentication, use:
       # uri: mongodb://username:password@localhost:27017/geo_attendance
 
-  # Temporarily disable Redis and Mail auto-configuration
-  autoconfigure:
-    exclude:
-      - org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration
-      - org.springframework.boot.autoconfigure.data.redis.RedisRepositoriesAutoConfiguration
-      - org.springframework.boot.autoconfigure.mail.MailSenderAutoConfiguration
-
-  # Redis settings (kept for reference)
+  # Redis settings
   redis:
-    host: localhost
-    port: 6379
+    host: ${SPRING_DATA_REDIS_HOST:localhost}
+    port: ${SPRING_DATA_REDIS_PORT:6379}
     timeout: 60000ms
     jedis:
       pool:
@@ -27,12 +22,12 @@ spring:
         max-idle: 10
         min-idle: 5
 
-  # Mail settings (kept for reference) - Mail auto-config is excluded above
+  # Mail settings
   mail:
     host: smtp.gmail.com
     port: 587
-    username: your-email@gmail.com
-    password: your-app-password
+    username: ${SPRING_MAIL_USERNAME:your-email@gmail.com}
+    password: ${SPRING_MAIL_PASSWORD:your-app-password}
     properties:
       mail:
         smtp:
@@ -45,9 +40,7 @@ spring:
           writetimeout: 5000
   
 app:
-  # Application-level flags to indicate these services are intentionally disabled.
-  disable-redis: true
-  disable-mail: true
+  # JWT settings
 
   jwt:
     secret: your-super-secret-jwt-key-change-this-in-production

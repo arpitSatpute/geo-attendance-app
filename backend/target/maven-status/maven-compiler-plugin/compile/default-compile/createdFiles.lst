@@ -1,11 +1,14 @@
+com/geoattendance/controller/AdminController.class
 com/geoattendance/repository/UserRepository.class
 com/geoattendance/controller/FaceVerificationController.class
 com/geoattendance/service/AttendanceService$AttendanceStatistics.class
 com/geoattendance/dto/SalaryCalculationRequest$SalaryCalculationRequestBuilder.class
 com/geoattendance/entity/Geofence$GeofenceType.class
 com/geoattendance/dto/FaceVerificationRequest.class
+com/geoattendance/controller/NotificationController.class
 com/geoattendance/entity/Salary$SalaryBuilder.class
 com/geoattendance/entity/Leave$LeaveType.class
+com/geoattendance/config/WebSocketConfig.class
 com/geoattendance/controller/UserController.class
 com/geoattendance/dto/FaceVerificationRequest$FaceVerificationRequestBuilder.class
 com/geoattendance/dto/FaceVerificationResponse$FaceVerificationResponseBuilder.class
@@ -21,11 +24,9 @@ com/geoattendance/controller/AttendanceController$CheckInRequest.class
 com/geoattendance/service/GeofencingService.class
 com/geoattendance/dto/LeaveResponse.class
 com/geoattendance/repository/TeamRepository.class
-com/geoattendance/config/NoOpMailConfig$1.class
 com/geoattendance/entity/AttendanceRecord$AttendanceStatus.class
 com/geoattendance/service/AttendanceService$AttendanceStatistics$Builder.class
 com/geoattendance/entity/Team.class
-com/geoattendance/config/NoOpMailConfig.class
 com/geoattendance/service/SalaryService.class
 com/geoattendance/scheduler/AttendanceScheduler.class
 com/geoattendance/controller/AuthController.class
@@ -50,6 +51,7 @@ com/geoattendance/service/AttendanceService.class
 com/geoattendance/service/FaceVerificationService.class
 com/geoattendance/service/AttendanceService$TeamMemberStatus$Builder.class
 com/geoattendance/controller/LocationController.class
+com/geoattendance/entity/Notification.class
 com/geoattendance/entity/User$UserBuilder.class
 com/geoattendance/controller/LocationController$LocationUpdateRequest.class
 com/geoattendance/controller/DebugController.class
@@ -72,6 +74,8 @@ com/geoattendance/entity/Team$TeamBuilder.class
 com/geoattendance/entity/Leave.class
 com/geoattendance/service/AuthenticationService.class
 com/geoattendance/dto/SalaryResponse$SalaryResponseBuilder.class
+com/geoattendance/config/NotificationWebSocketHandler.class
+com/geoattendance/entity/Notification$NotificationBuilder.class
 com/geoattendance/entity/Geofence$GeofenceBuilder.class
 com/geoattendance/entity/Salary$SalaryStatus.class
 com/geoattendance/dto/RegisterRequest.class
@@ -81,3 +85,4 @@ com/geoattendance/service/AttendanceService$LocationUpdateResult.class
 com/geoattendance/controller/GeofenceController.class
 com/geoattendance/repository/LeaveRepository.class
 com/geoattendance/config/WebConfig.class
+com/geoattendance/repository/NotificationRepository.class
