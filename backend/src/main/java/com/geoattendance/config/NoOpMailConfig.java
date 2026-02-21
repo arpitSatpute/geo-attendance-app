@@ -18,12 +18,7 @@ import java.io.InputStream;
 import java.util.Arrays;
 import java.util.Properties;
 
-/**
- * Provides a no-op JavaMailSender when mail is intentionally disabled via
- * the `app.disable-mail=true` property. This prevents startup failures in
- * services that autowire JavaMailSender while keeping mail calls safe to
- * execute (they'll only be logged).
- */
+
 @Configuration
 @ConditionalOnProperty(prefix = "app", name = "disable-mail", havingValue = "true")
 public class NoOpMailConfig {

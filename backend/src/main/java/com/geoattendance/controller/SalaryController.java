@@ -2,6 +2,7 @@ package com.geoattendance.controller;
 
 import com.geoattendance.dto.SalaryCalculationRequest;
 import com.geoattendance.dto.SalaryResponse;
+import com.geoattendance.service.AuthenticationService;
 import com.geoattendance.service.SalaryService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -13,6 +14,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.YearMonth;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/salary")
@@ -21,9 +23,11 @@ public class SalaryController {
     private static final Logger log = LoggerFactory.getLogger(SalaryController.class);
 
     private final SalaryService salaryService;
+    private final AuthenticationService authenticationService;
 
-    public SalaryController(SalaryService salaryService) {
+    public SalaryController(SalaryService salaryService, AuthenticationService authenticationService) {
         this.salaryService = salaryService;
+        this.authenticationService = authenticationService;
     }
 
     /**
@@ -31,14 +35,14 @@ public class SalaryController {
      */
     @PostMapping("/calculate")
     @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN')")
-    public ResponseEntity<SalaryResponse> calculateSalary(@RequestBody SalaryCalculationRequest request) {
+    public ResponseEntity<?> calculateSalary(@RequestBody SalaryCalculationRequest request) {
         try {
             String calculatedBy = getCurrentUserId();
             SalaryResponse response = salaryService.calculateMonthlySalary(request, calculatedBy);
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             log.error("Error calculating salary: {}", e.getMessage(), e);
-            return ResponseEntity.badRequest().build();
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
 
@@ -47,7 +51,7 @@ public class SalaryController {
      */
     @GetMapping("/my-salary")
     @PreAuthorize("hasAnyRole('EMPLOYEE', 'MANAGER', 'ADMIN')")
-    public ResponseEntity<SalaryResponse> getMySalary(
+    public ResponseEntity<?> getMySalary(
             @RequestParam Integer year,
             @RequestParam Integer month) {
         try {
@@ -56,7 +60,7 @@ public class SalaryController {
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             log.error("Error fetching salary: {}", e.getMessage(), e);
-            return ResponseEntity.notFound().build();
+            return ResponseEntity.status(404).body(Map.of("error", e.getMessage(), "message", e.getMessage()));
         }
     }
 
@@ -72,6 +76,21 @@ public class SalaryController {
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             log.error("Error fetching salary history: {}", e.getMessage(), e);
+            return ResponseEntity.badRequest().build();
+        }
+    }
+
+    /**
+     * Manager/Admin endpoint to view a specific employee's salary history
+     */
+    @GetMapping("/employee/{userId}/history")
+    @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN')")
+    public ResponseEntity<List<SalaryResponse>> getEmployeeSalaryHistory(@PathVariable String userId) {
+        try {
+            List<SalaryResponse> response = salaryService.getMySalaryHistory(userId);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            log.error("Error fetching employee salary history: {}", e.getMessage(), e);
             return ResponseEntity.badRequest().build();
         }
     }
@@ -114,7 +133,7 @@ public class SalaryController {
      */
     @GetMapping("/my-salary/current")
     @PreAuthorize("hasAnyRole('EMPLOYEE', 'MANAGER', 'ADMIN')")
-    public ResponseEntity<SalaryResponse> getCurrentMonthSalary() {
+    public ResponseEntity<?> getCurrentMonthSalary() {
         try {
             YearMonth currentMonth = YearMonth.now();
             String userId = getCurrentUserId();
@@ -126,12 +145,11 @@ public class SalaryController {
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             log.error("Error fetching current month salary: {}", e.getMessage(), e);
-            return ResponseEntity.notFound().build();
+            return ResponseEntity.status(404).body(Map.of("error", e.getMessage(), "message", e.getMessage()));
         }
     }
 
     private String getCurrentUserId() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        return authentication.getName(); // Assumes principal is user ID
+        return authenticationService.getCurrentUserId();
     }
 }

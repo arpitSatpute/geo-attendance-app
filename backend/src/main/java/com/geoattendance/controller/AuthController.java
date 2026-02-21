@@ -96,6 +96,7 @@ public class AuthController {
         user.setLastName(registerRequest.getLastName());
         user.setPhone(registerRequest.getPhone());
         user.setRole(registerRequest.getRole() != null ? registerRequest.getRole() : "EMPLOYEE");
+        user.setBaseSalary(registerRequest.getBaseSalary());
         user.setActive(true);
         user.setCreatedAt(LocalDateTime.now());
         user.setUpdatedAt(LocalDateTime.now());
@@ -140,6 +141,7 @@ public class AuthController {
         userDto.put("role", user.getRole());
         userDto.put("active", user.isActive());
         userDto.put("department", user.getDepartment());
+        userDto.put("baseSalary", user.getBaseSalary());
         
         // Include manager information if available
         if (user.getManager() != null) {

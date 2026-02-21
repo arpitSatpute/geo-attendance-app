@@ -15,6 +15,8 @@ import org.springframework.web.bind.annotation.*;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -112,6 +114,138 @@ public class UserController {
         }
     }
 
+    /**
+     * Get all users with MANAGER role (for manager change dropdown)
+     */
+    @GetMapping("/managers")
+    @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN')")
+    public ResponseEntity<List<UserDto>> getAllManagers() {
+        try {
+            List<User> managers = userRepository.findByRole("MANAGER");
+            List<UserDto> dtoList = managers.stream()
+                .map(this::toUserDto)
+                .collect(Collectors.toList());
+            return ResponseEntity.ok(dtoList);
+        } catch (Exception e) {
+            log.error("Error fetching managers: {}", e.getMessage(), e);
+            return ResponseEntity.badRequest().build();
+        }
+    }
+
+    /**
+     * Get specific employee details (Manager/Admin only)
+     */
+    @GetMapping("/employee/{id}")
+    @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN')")
+    public ResponseEntity<?> getEmployeeDetails(@PathVariable String id) {
+        try {
+            User user = userRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+            return ResponseEntity.ok(toUserDto(user));
+        } catch (Exception e) {
+            log.error("Error fetching employee details: {}", e.getMessage(), e);
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    /**
+     * Update employee base salary (Manager/Admin only)
+     */
+    @PutMapping("/{id}/salary")
+    @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN')")
+    public ResponseEntity<?> updateBaseSalary(@PathVariable String id, @RequestBody Map<String, Double> payload) {
+        try {
+            Double baseSalary = payload.get("baseSalary");
+            User user = userRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+            
+            user.setBaseSalary(baseSalary);
+            userRepository.save(user);
+            
+            log.info("Updated base salary for user: {} to: {}", id, baseSalary);
+            return ResponseEntity.ok(toUserDto(user));
+        } catch (Exception e) {
+            log.error("Error updating base salary: {}", e.getMessage(), e);
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    /**
+     * Update employee's team (Manager/Admin only)
+     */
+    @PutMapping("/{id}/team")
+    @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN')")
+    public ResponseEntity<?> updateEmployeeTeam(@PathVariable String id, @RequestBody Map<String, String> payload) {
+        try {
+            String teamId = payload.get("teamId");
+            User user = userRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+            
+            // Remove from old team if exists
+            Optional<Team> currentTeam = teamService.getTeamByEmployeeId(id);
+            if (currentTeam.isPresent()) {
+                teamService.removeEmployeeFromTeam(currentTeam.get().getId(), id);
+            }
+            
+            // Add to new team if specified
+            if (teamId != null && !teamId.isEmpty()) {
+                // We need addEmployeeToTeamById in TeamService or use the existing email one.
+                // Let's add by ID logic here since we have the ID.
+                Team team = teamService.getTeamById(teamId)
+                    .orElseThrow(() -> new RuntimeException("Team not found"));
+                
+                if (team.getEmployeeIds() == null) {
+                    team.setEmployeeIds(new ArrayList<>());
+                }
+                if (!team.getEmployeeIds().contains(id)) {
+                    team.getEmployeeIds().add(id);
+                    // TeamService remove/add methods are @Transactional. 
+                    // Let's use service methods instead.
+                }
+                // Updated logic: Actually TeamService needs an addEmployeeById method.
+                // For now, let's just use the email one since we have the user.
+                teamService.addEmployeeToTeamByEmail(teamId, user.getEmail());
+            }
+            
+            user.setTeamId(teamId);
+            userRepository.save(user);
+            
+            return ResponseEntity.ok(toUserDto(user));
+        } catch (Exception e) {
+            log.error("Error updating team: {}", e.getMessage(), e);
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    /**
+     * Update employee's manager (Admin/Manager only)
+     * Managers can hand over their employees to other managers
+     */
+    @PutMapping("/{id}/manager")
+    @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN')")
+    public ResponseEntity<?> updateEmployeeManager(@PathVariable String id, @RequestBody Map<String, String> payload) {
+        try {
+            String managerId = payload.get("managerId");
+            User user = userRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+            
+            User newManager = null;
+            if (managerId != null && !managerId.isEmpty()) {
+                newManager = userRepository.findById(managerId)
+                    .orElseThrow(() -> new RuntimeException("Manager not found"));
+            }
+            
+            user.setManager(newManager);
+            user.setManagerId(managerId);
+            userRepository.save(user);
+            
+            return ResponseEntity.ok(toUserDto(user));
+        } catch (Exception e) {
+            log.error("Error updating manager: {}", e.getMessage(), e);
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
     private UserDto toUserDto(User user) {
         UserDto dto = new UserDto();
         dto.setId(user.getId());
@@ -121,6 +255,12 @@ public class UserController {
         dto.setRole(user.getRole());
         dto.setPhone(user.getPhone());
         dto.setActive(user.isActive());
+        dto.setBaseSalary(user.getBaseSalary());
+        dto.setTeamId(user.getTeamId());
+        dto.setManagerId(user.getManagerId());
+        if (user.getManager() != null) {
+            dto.setManagerName(user.getManager().getFirstName() + " " + user.getManager().getLastName());
+        }
         return dto;
     }
 
@@ -133,6 +273,10 @@ public class UserController {
         private String role;
         private String phone;
         private boolean active;
+        private Double baseSalary;
+        private String teamId;
+        private String managerId;
+        private String managerName;
         
         public UserDto() {}
         
@@ -156,5 +300,17 @@ public class UserController {
         
         public boolean isActive() { return active; }
         public void setActive(boolean active) { this.active = active; }
+        
+        public Double getBaseSalary() { return baseSalary; }
+        public void setBaseSalary(Double baseSalary) { this.baseSalary = baseSalary; }
+
+        public String getTeamId() { return teamId; }
+        public void setTeamId(String teamId) { this.teamId = teamId; }
+
+        public String getManagerId() { return managerId; }
+        public void setManagerId(String managerId) { this.managerId = managerId; }
+
+        public String getManagerName() { return managerName; }
+        public void setManagerName(String managerName) { this.managerName = managerName; }
     }
 }

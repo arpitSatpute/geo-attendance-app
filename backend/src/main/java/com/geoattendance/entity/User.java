@@ -51,6 +51,8 @@ public class User {
     // Team assignment
     private String teamId;
     
+    private Double baseSalary;
+    
     // Face registration data (base64 encoded face image reference)
     private String faceImageData;
     

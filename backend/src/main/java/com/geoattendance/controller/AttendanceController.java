@@ -3,6 +3,7 @@ package com.geoattendance.controller;
 import com.geoattendance.entity.AttendanceRecord;
 import com.geoattendance.entity.Team;
 import com.geoattendance.entity.User;
+import com.geoattendance.repository.UserRepository;
 import com.geoattendance.service.AttendanceService;
 import com.geoattendance.service.AuthenticationService;
 import com.geoattendance.service.TeamService;
@@ -29,6 +30,7 @@ public class AttendanceController {
     private final AttendanceService attendanceService;
     private final AuthenticationService authenticationService;
     private final TeamService teamService;
+    private final UserRepository userRepository;
     
     /**
      * Get today's attendance for current user
@@ -92,6 +94,27 @@ public class AttendanceController {
         User currentUser = authenticationService.getCurrentUser();
         AttendanceService.AttendanceStatistics stats = attendanceService.getAttendanceStatistics(currentUser, startDate, endDate);
         return ResponseEntity.ok(stats);
+    }
+
+    /**
+     * Get attendance statistics for a specific employee (for managers)
+     */
+    @GetMapping("/employee/{userId}/statistics")
+    @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN')")
+    public ResponseEntity<?> getEmployeeStatistics(
+        @PathVariable String userId,
+        @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+        @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate
+    ) {
+        try {
+            User employee = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("Employee not found"));
+            AttendanceService.AttendanceStatistics stats = attendanceService.getAttendanceStatistics(employee, startDate, endDate);
+            return ResponseEntity.ok(stats);
+        } catch (Exception e) {
+            log.error("Error fetching employee statistics: {}", e.getMessage(), e);
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
     }
     
     /**

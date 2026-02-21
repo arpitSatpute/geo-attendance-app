@@ -2,6 +2,8 @@ package com.geoattendance.controller;
 
 import com.geoattendance.dto.LeaveRequest;
 import com.geoattendance.dto.LeaveResponse;
+import com.geoattendance.dto.LeaveResponse;
+import com.geoattendance.service.AuthenticationService;
 import com.geoattendance.service.LeaveService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -20,9 +22,11 @@ public class LeaveController {
     private static final Logger log = LoggerFactory.getLogger(LeaveController.class);
 
     private final LeaveService leaveService;
+    private final AuthenticationService authenticationService;
 
-    public LeaveController(LeaveService leaveService) {
+    public LeaveController(LeaveService leaveService, AuthenticationService authenticationService) {
         this.leaveService = leaveService;
+        this.authenticationService = authenticationService;
     }
 
     /**
@@ -54,6 +58,21 @@ public class LeaveController {
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             log.error("Error fetching leaves: {}", e.getMessage(), e);
+            return ResponseEntity.badRequest().build();
+        }
+    }
+
+    /**
+     * Manager/Admin gets leaves for a specific employee
+     */
+    @GetMapping("/employee/{userId}")
+    @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN')")
+    public ResponseEntity<List<LeaveResponse>> getEmployeeLeaves(@PathVariable String userId) {
+        try {
+            List<LeaveResponse> response = leaveService.getMyLeaves(userId);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            log.error("Error fetching employee leaves: {}", e.getMessage(), e);
             return ResponseEntity.badRequest().build();
         }
     }
@@ -121,7 +140,6 @@ public class LeaveController {
     }
 
     private String getCurrentUserId() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        return authentication.getName();
+        return authenticationService.getCurrentUserId();
     }
 }

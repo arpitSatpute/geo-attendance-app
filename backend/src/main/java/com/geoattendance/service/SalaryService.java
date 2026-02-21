@@ -81,7 +81,7 @@ public class SalaryService {
                 .count();
         
         // Get base salary (from user or default)
-        double baseSalary = DEFAULT_BASE_SALARY; // You can add baseSalary field to User entity
+        double baseSalary = user.getBaseSalary() != null ? user.getBaseSalary() : DEFAULT_BASE_SALARY;
         double perDaySalary = baseSalary / totalWorkingDays;
         
         // Calculate earned salary
