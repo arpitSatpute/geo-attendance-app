@@ -98,6 +98,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/login", "/api/auth/register", "/api/auth/logout").permitAll()
                         .requestMatchers("/auth/login", "/auth/register", "/auth/logout").permitAll()
                         .requestMatchers("/auth/debug/**", "/debug/**", "/public/**", "/error", "/error/**").permitAll()
+                        .requestMatchers("/ws/notifications", "/ws/notifications/**").permitAll()
                         // Swagger/OpenAPI documentation endpoints
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
                         // Allow OPTIONS requests for CORS
