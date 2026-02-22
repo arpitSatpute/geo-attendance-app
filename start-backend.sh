@@ -7,7 +7,7 @@ echo ""
 
 # Use Java 17 for Lombok compatibility (Java 21 has issues with Lombok)
 if [ -x "/usr/libexec/java_home" ]; then
-    export JAVA_HOME=$(/usr/libexec/java_home -v 17 2>/dev/null || /usr/libexec/java_home)
+    export JAVA_HOME=$(/usr/libexec/java_home -v 21 2>/dev/null || /usr/libexec/java_home)
     echo "📍 Using Java: $JAVA_HOME"
 fi
 

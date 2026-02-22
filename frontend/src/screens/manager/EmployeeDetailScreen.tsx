@@ -24,6 +24,7 @@ const EmployeeDetailScreen = ({ route, navigation }: any) => {
     const [loading, setLoading] = useState(true);
     const [employee, setEmployee] = useState<any>(null);
     const [attendanceStats, setAttendanceStats] = useState<any>(null);
+    const [attendanceHistory, setAttendanceHistory] = useState<any[]>([]);
     const [salaryHistory, setSalaryHistory] = useState<any[]>([]);
     const [leaveHistory, setLeaveHistory] = useState<any[]>([]);
     const [editing, setEditing] = useState(false);
@@ -34,7 +35,10 @@ const EmployeeDetailScreen = ({ route, navigation }: any) => {
         teamId: '',
         managerId: '',
     });
+    const [teamName, setTeamName] = useState('Unassigned');
     const [saving, setSaving] = useState(false);
+    const [showSalaryUpdate, setShowSalaryUpdate] = useState(false);
+    const [showManagerUpdate, setShowManagerUpdate] = useState(false);
 
     useEffect(() => {
         loadData();
@@ -47,17 +51,31 @@ const EmployeeDetailScreen = ({ route, navigation }: any) => {
             const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
             const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
 
-            const [userRes, statsRes, salaryRes, leavesRes] = await Promise.all([
+            const [userRes, statsRes, salaryRes, leavesRes, historyRes] = await Promise.all([
                 ApiService.get(`/users/employee/${userId}`),
                 ApiService.get(`/attendance/employee/${userId}/statistics?startDate=${firstDayOfMonth}&endDate=${lastDayOfMonth}`),
                 ApiService.get(`/salary/employee/${userId}/history`),
-                ApiService.get(`/leaves/employee/${userId}`)
+                ApiService.get(`/leaves/employee/${userId}`),
+                ApiService.get(`/attendance/employee/${userId}/history?startDate=${firstDayOfMonth}&endDate=${lastDayOfMonth}`)
             ]);
 
             setEmployee(userRes.data);
             setAttendanceStats(statsRes.data);
+            setAttendanceHistory(historyRes.data || []);
             setSalaryHistory(salaryRes.data || []);
             setLeaveHistory(leavesRes.data || []);
+
+            // Fetch team name if assigned
+            if (userRes.data.teamId) {
+                try {
+                    const teamRes = await ApiService.get(`/teams/${userRes.data.teamId}`);
+                    setTeamName(teamRes.data.name);
+                } catch (e) {
+                    setTeamName('Assigned (Error loading name)');
+                }
+            } else {
+                setTeamName('Unassigned');
+            }
 
             // Prefill edit data
             setEditData({
@@ -198,74 +216,191 @@ const EmployeeDetailScreen = ({ route, navigation }: any) => {
                             icon="trending-up"
                             colors={['#3b82f6', '#2563eb']}
                         />
+                        <StatCard
+                            label="Work Hours"
+                            value={`${attendanceStats?.totalWorkHours?.toFixed(1) || 0}h`}
+                            icon="time"
+                            colors={['#8b5cf6', '#6d28d9']}
+                        />
+                        <StatCard
+                            label="Status"
+                            value={attendanceStats?.currentStatus?.replace('_', ' ') || 'NONE'}
+                            icon="radio"
+                            colors={['#06b6d4', '#0891b2']}
+                        />
                     </View>
 
-                    {/* Management Control Section - Now Inline */}
-                    <Text style={styles.sectionTitle}>Management Settings</Text>
+                    {/* Today's Real-time Status Card */}
+                    <View style={[styles.infoCard, { marginTop: 12, backgroundColor: '#f0f9ff', borderColor: '#bae6fd' }]}>
+                        <View style={styles.managementRow}>
+                            <View>
+                                <Text style={[styles.managementLabel, { color: '#0369a1' }]}>Today's Activity</Text>
+                                <View style={{ flexDirection: 'row', marginTop: 8, gap: 20 }}>
+                                    <View>
+                                        <Text style={{ fontSize: 10, color: '#64748b' }}>IN</Text>
+                                        <Text style={{ fontSize: 16, fontWeight: '700', color: '#0f172a' }}>{attendanceStats?.todayCheckIn || '--:--'}</Text>
+                                    </View>
+                                    <View>
+                                        <Text style={{ fontSize: 10, color: '#64748b' }}>OUT</Text>
+                                        <Text style={{ fontSize: 16, fontWeight: '700', color: '#0f172a' }}>{attendanceStats?.todayCheckOut || '--:--'}</Text>
+                                    </View>
+                                </View>
+                            </View>
+                            <View style={{ alignItems: 'flex-end' }}>
+                                <Text style={{ fontSize: 10, color: '#64748b' }}>Status</Text>
+                                <Text style={{ fontSize: 14, fontWeight: '700', color: '#0369a1' }}>{attendanceStats?.currentStatus?.replace('_', ' ') || 'NOT STARTED'}</Text>
+                            </View>
+                        </View>
+                    </View>
+
+                    {/* Management Control Section - Refactored */}
+                    <Text style={styles.sectionTitle}>Employee Management</Text>
                     <View style={styles.infoCard}>
-                        <Text style={styles.inputLabel}>Monthly Base Salary (₹)</Text>
-                        <TextInput
-                            style={styles.input}
-                            value={editData.baseSalary}
-                            onChangeText={(text) => setEditData({ ...editData, baseSalary: text })}
-                            keyboardType="numeric"
-                            placeholder="Enter base salary"
-                        />
+                        {/* Team Info (Read-only as per request) */}
+                        <View style={styles.managementRow}>
+                            <View style={{ flex: 1 }}>
+                                <Text style={styles.managementLabel}>Assigned Team</Text>
+                                <Text style={styles.managementValue}>{teamName}</Text>
+                            </View>
+                            <Ionicons name="people" size={24} color="#64748b" />
+                        </View>
 
-                        <Text style={styles.inputLabel}>Assign Team</Text>
-                        <Dropdown
-                            style={styles.dropdown}
-                            placeholderStyle={styles.placeholderStyle}
-                            selectedTextStyle={styles.selectedTextStyle}
-                            inputSearchStyle={styles.inputSearchStyle}
-                            iconStyle={styles.iconStyle}
-                            data={[
-                                { label: 'Unassigned', value: '' },
-                                ...teams.map(t => ({ label: t.name, value: t.id }))
-                            ]}
-                            search
-                            maxHeight={300}
-                            labelField="label"
-                            valueField="value"
-                            placeholder="Select Team"
-                            searchPlaceholder="Search..."
-                            value={editData.teamId}
-                            onChange={item => setEditData({ ...editData, teamId: item.value })}
-                        />
+                        <View style={styles.divider} />
 
-                        <Text style={styles.inputLabel}>Handover to Manager</Text>
-                        <Text style={styles.inputHint}>Warning: Transfers authority to selected manager</Text>
-                        <Dropdown
-                            style={styles.dropdown}
-                            placeholderStyle={styles.placeholderStyle}
-                            selectedTextStyle={styles.selectedTextStyle}
-                            inputSearchStyle={styles.inputSearchStyle}
-                            iconStyle={styles.iconStyle}
-                            data={[
-                                { label: 'Keep Current (You)', value: employee?.managerId || '' },
-                                ...managers.filter(m => m.id !== employee?.managerId).map(m => ({ label: `${m.firstName} ${m.lastName}`, value: m.id }))
-                            ]}
-                            search
-                            maxHeight={300}
-                            labelField="label"
-                            valueField="value"
-                            placeholder="Select Manager"
-                            searchPlaceholder="Search..."
-                            value={editData.managerId}
-                            onChange={item => setEditData({ ...editData, managerId: item.value })}
-                        />
+                        {/* Salary Management */}
+                        <View style={styles.managementRow}>
+                            <View style={{ flex: 1 }}>
+                                <Text style={styles.managementLabel}>Monthly Salary</Text>
+                                <Text style={styles.managementValue}>₹{employee?.baseSalary || 0}</Text>
+                            </View>
+                            <TouchableOpacity
+                                style={styles.smallActionBtn}
+                                onPress={() => {
+                                    setEditData({ ...editData, baseSalary: String(employee?.baseSalary || '') });
+                                    setShowSalaryUpdate(!showSalaryUpdate);
+                                }}
+                            >
+                                <Text style={styles.smallActionBtnText}>
+                                    {showSalaryUpdate ? 'Cancel' : 'Update Salary'}
+                                </Text>
+                            </TouchableOpacity>
+                        </View>
 
-                        <TouchableOpacity
-                            style={[styles.saveButtonInline, saving && { opacity: 0.5 }]}
-                            onPress={handleSaveManagement}
-                            disabled={saving}
-                        >
-                            {saving ? (
-                                <ActivityIndicator color="#fff" />
-                            ) : (
-                                <Text style={styles.saveText}>Update Employee Status</Text>
-                            )}
-                        </TouchableOpacity>
+                        {showSalaryUpdate && (
+                            <View style={styles.inlineUpdateBox}>
+                                <TextInput
+                                    style={styles.input}
+                                    value={editData.baseSalary}
+                                    onChangeText={(text) => setEditData({ ...editData, baseSalary: text })}
+                                    keyboardType="numeric"
+                                    placeholder="New Base Salary"
+                                />
+                                <TouchableOpacity
+                                    style={styles.confirmBtn}
+                                    onPress={handleSaveManagement}
+                                    disabled={saving}
+                                >
+                                    {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.confirmBtnText}>Confirm Salary</Text>}
+                                </TouchableOpacity>
+                            </View>
+                        )}
+
+                        <View style={styles.divider} />
+
+                        {/* Manager Management */}
+                        <View style={styles.managementRow}>
+                            <View style={{ flex: 1 }}>
+                                <Text style={styles.managementLabel}>Reporting Manager</Text>
+                                <Text style={styles.managementValue}>
+                                    {employee?.manager ? `${employee.manager.firstName} ${employee.manager.lastName}` : 'You (Current)'}
+                                </Text>
+                            </View>
+                            <TouchableOpacity
+                                style={styles.smallActionBtn}
+                                onPress={() => {
+                                    loadManagementData();
+                                    setShowManagerUpdate(!showManagerUpdate);
+                                }}
+                            >
+                                <Text style={styles.smallActionBtnText}>
+                                    {showManagerUpdate ? 'Cancel' : 'Transfer'}
+                                </Text>
+                            </TouchableOpacity>
+                        </View>
+
+                        {showManagerUpdate && (
+                            <View style={styles.inlineUpdateBox}>
+                                <Text style={styles.inputHint}>Transfer authority to another manager</Text>
+                                <Dropdown
+                                    style={styles.dropdown}
+                                    placeholderStyle={styles.placeholderStyle}
+                                    selectedTextStyle={styles.selectedTextStyle}
+                                    inputSearchStyle={styles.inputSearchStyle}
+                                    iconStyle={styles.iconStyle}
+                                    data={[
+                                        { label: 'Keep Current', value: employee?.managerId || '' },
+                                        ...managers.filter(m => m.id !== employee?.managerId).map(m => ({ label: `${m.firstName} ${m.lastName}`, value: m.id }))
+                                    ]}
+                                    search
+                                    maxHeight={300}
+                                    labelField="label"
+                                    valueField="value"
+                                    placeholder="Select Manager"
+                                    searchPlaceholder="Search..."
+                                    value={editData.managerId}
+                                    onChange={item => setEditData({ ...editData, managerId: item.value })}
+                                />
+                                <TouchableOpacity
+                                    style={styles.confirmBtn}
+                                    onPress={handleSaveManagement}
+                                    disabled={saving}
+                                >
+                                    {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.confirmBtnText}>Transfer Manager</Text>}
+                                </TouchableOpacity>
+                            </View>
+                        )}
+                    </View>
+
+                    {/* Monthly Attendance Logs */}
+                    <Text style={styles.sectionTitle}>Daily Attendance Log (This Month)</Text>
+                    <View style={styles.infoCard}>
+                        {attendanceHistory.length > 0 ? (
+                            attendanceHistory.slice().reverse().map((record, idx) => {
+                                const checkIn = record.checkInTime ? new Date(record.checkInTime) : null;
+                                const checkOut = record.checkOutTime ? new Date(record.checkOutTime) : null;
+
+                                return (
+                                    <View key={idx}>
+                                        <View style={styles.historyRow}>
+                                            <View style={{ width: 80 }}>
+                                                <Text style={[styles.historyDate, { fontWeight: '700' }]}>
+                                                    {checkIn ? checkIn.toLocaleDateString('en-US', { day: '2-digit', month: 'short' }) : 'N/A'}
+                                                </Text>
+                                            </View>
+                                            <View style={{ flex: 1 }}>
+                                                <Text style={{ fontSize: 12, color: '#64748b' }}>
+                                                    {checkIn ? checkIn.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--'} - {checkOut ? checkOut.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--'}
+                                                </Text>
+                                            </View>
+                                            <View style={[styles.leaveBadge, {
+                                                backgroundColor: record.status === 'LATE' ? '#fef3c7' :
+                                                    record.status === 'ABSENT' ? '#fee2e2' : '#dcfce7'
+                                            }]}>
+                                                <Text style={[styles.leaveBadgeText, {
+                                                    color: record.status === 'LATE' ? '#92400e' :
+                                                        record.status === 'ABSENT' ? '#991b1b' : '#166534'
+                                                }]}>
+                                                    {record.status}
+                                                </Text>
+                                            </View>
+                                        </View>
+                                        {idx < attendanceHistory.length - 1 && <View style={[styles.divider, { marginVertical: 8 }]} />}
+                                    </View>
+                                );
+                            })
+                        ) : (
+                            <Text style={styles.emptySmall}>No records for this month</Text>
+                        )}
                     </View>
 
                     {/* Financial Summary */}
@@ -653,6 +788,57 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: '#e2e8f0',
         marginTop: 4,
+    },
+    managementRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
+    managementLabel: {
+        fontSize: 12,
+        color: '#64748b',
+        fontWeight: '600',
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
+    },
+    managementValue: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: '#1e293b',
+        marginTop: 2,
+    },
+    smallActionBtn: {
+        backgroundColor: '#f1f5f9',
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: '#e2e8f0',
+    },
+    smallActionBtnText: {
+        fontSize: 12,
+        fontWeight: '700',
+        color: '#4f46e5',
+    },
+    inlineUpdateBox: {
+        marginTop: 16,
+        padding: 12,
+        backgroundColor: '#f8fafc',
+        borderRadius: 16,
+        borderWidth: 1,
+        borderColor: '#e2e8f0',
+        gap: 12,
+    },
+    confirmBtn: {
+        backgroundColor: '#4f46e5',
+        paddingVertical: 12,
+        borderRadius: 10,
+        alignItems: 'center',
+    },
+    confirmBtnText: {
+        color: '#fff',
+        fontWeight: '700',
+        fontSize: 14,
     },
 });
 

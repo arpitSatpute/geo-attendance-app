@@ -28,10 +28,10 @@ public class UserController {
 
     @Autowired
     private UserRepository userRepository;
-    
+
     @Autowired
     private TeamService teamService;
-    
+
     @Autowired
     private AuthenticationService authenticationService;
 
@@ -60,14 +60,14 @@ public class UserController {
             }
 
             // Fetch all employees
-            List<User> employees = employeeIds.isEmpty() 
-                ? new ArrayList<>() 
-                : userRepository.findAllById(employeeIds);
+            List<User> employees = employeeIds.isEmpty()
+                    ? new ArrayList<>()
+                    : userRepository.findAllById(employeeIds);
 
             // Convert to DTOs (to avoid exposing sensitive data like passwords)
             List<UserDto> userDtos = employees.stream()
-                .map(this::toUserDto)
-                .collect(Collectors.toList());
+                    .map(this::toUserDto)
+                    .collect(Collectors.toList());
 
             log.info("Found {} team members for manager: {}", userDtos.size(), managerId);
 
@@ -87,8 +87,8 @@ public class UserController {
         try {
             List<User> users = userRepository.findAll();
             List<UserDto> userDtos = users.stream()
-                .map(this::toUserDto)
-                .collect(Collectors.toList());
+                    .map(this::toUserDto)
+                    .collect(Collectors.toList());
             return ResponseEntity.ok(userDtos);
         } catch (Exception e) {
             log.error("Error fetching all users: {}", e.getMessage(), e);
@@ -105,8 +105,8 @@ public class UserController {
         try {
             List<User> employees = userRepository.findByRole("EMPLOYEE");
             List<UserDto> userDtos = employees.stream()
-                .map(this::toUserDto)
-                .collect(Collectors.toList());
+                    .map(this::toUserDto)
+                    .collect(Collectors.toList());
             return ResponseEntity.ok(userDtos);
         } catch (Exception e) {
             log.error("Error fetching employees: {}", e.getMessage(), e);
@@ -123,8 +123,8 @@ public class UserController {
         try {
             List<User> managers = userRepository.findByRole("MANAGER");
             List<UserDto> dtoList = managers.stream()
-                .map(this::toUserDto)
-                .collect(Collectors.toList());
+                    .map(this::toUserDto)
+                    .collect(Collectors.toList());
             return ResponseEntity.ok(dtoList);
         } catch (Exception e) {
             log.error("Error fetching managers: {}", e.getMessage(), e);
@@ -140,7 +140,7 @@ public class UserController {
     public ResponseEntity<?> getEmployeeDetails(@PathVariable String id) {
         try {
             User user = userRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                    .orElseThrow(() -> new RuntimeException("User not found"));
             return ResponseEntity.ok(toUserDto(user));
         } catch (Exception e) {
             log.error("Error fetching employee details: {}", e.getMessage(), e);
@@ -157,11 +157,11 @@ public class UserController {
         try {
             Double baseSalary = payload.get("baseSalary");
             User user = userRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-            
+                    .orElseThrow(() -> new RuntimeException("User not found"));
+
             user.setBaseSalary(baseSalary);
             userRepository.save(user);
-            
+
             log.info("Updated base salary for user: {} to: {}", id, baseSalary);
             return ResponseEntity.ok(toUserDto(user));
         } catch (Exception e) {
@@ -179,37 +179,37 @@ public class UserController {
         try {
             String teamId = payload.get("teamId");
             User user = userRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-            
+                    .orElseThrow(() -> new RuntimeException("User not found"));
+
             // Remove from old team if exists
             Optional<Team> currentTeam = teamService.getTeamByEmployeeId(id);
             if (currentTeam.isPresent()) {
                 teamService.removeEmployeeFromTeam(currentTeam.get().getId(), id);
             }
-            
+
             // Add to new team if specified
             if (teamId != null && !teamId.isEmpty()) {
                 // We need addEmployeeToTeamById in TeamService or use the existing email one.
                 // Let's add by ID logic here since we have the ID.
                 Team team = teamService.getTeamById(teamId)
-                    .orElseThrow(() -> new RuntimeException("Team not found"));
-                
+                        .orElseThrow(() -> new RuntimeException("Team not found"));
+
                 if (team.getEmployeeIds() == null) {
                     team.setEmployeeIds(new ArrayList<>());
                 }
                 if (!team.getEmployeeIds().contains(id)) {
                     team.getEmployeeIds().add(id);
-                    // TeamService remove/add methods are @Transactional. 
+                    // TeamService remove/add methods are @Transactional.
                     // Let's use service methods instead.
                 }
                 // Updated logic: Actually TeamService needs an addEmployeeById method.
                 // For now, let's just use the email one since we have the user.
                 teamService.addEmployeeToTeamByEmail(teamId, user.getEmail());
             }
-            
+
             user.setTeamId(teamId);
             userRepository.save(user);
-            
+
             return ResponseEntity.ok(toUserDto(user));
         } catch (Exception e) {
             log.error("Error updating team: {}", e.getMessage(), e);
@@ -227,18 +227,18 @@ public class UserController {
         try {
             String managerId = payload.get("managerId");
             User user = userRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-            
+                    .orElseThrow(() -> new RuntimeException("User not found"));
+
             User newManager = null;
             if (managerId != null && !managerId.isEmpty()) {
                 newManager = userRepository.findById(managerId)
-                    .orElseThrow(() -> new RuntimeException("Manager not found"));
+                        .orElseThrow(() -> new RuntimeException("Manager not found"));
             }
-            
+
             user.setManager(newManager);
             user.setManagerId(managerId);
             userRepository.save(user);
-            
+
             return ResponseEntity.ok(toUserDto(user));
         } catch (Exception e) {
             log.error("Error updating manager: {}", e.getMessage(), e);
@@ -262,6 +262,7 @@ public class UserController {
             dto.setManagerName(user.getManager().getFirstName() + " " + user.getManager().getLastName());
         }
         dto.setCompanyEmail(user.getCompanyEmail());
+        dto.setDepartment(user.getDepartment());
         return dto;
     }
 
@@ -279,43 +280,113 @@ public class UserController {
         private String managerId;
         private String managerName;
         private String companyEmail;
-        
-        public UserDto() {}
-        
-        public String getId() { return id; }
-        public void setId(String id) { this.id = id; }
-        
-        public String getEmail() { return email; }
-        public void setEmail(String email) { this.email = email; }
-        
-        public String getFirstName() { return firstName; }
-        public void setFirstName(String firstName) { this.firstName = firstName; }
-        
-        public String getLastName() { return lastName; }
-        public void setLastName(String lastName) { this.lastName = lastName; }
-        
-        public String getRole() { return role; }
-        public void setRole(String role) { this.role = role; }
-        
-        public String getPhone() { return phone; }
-        public void setPhone(String phone) { this.phone = phone; }
-        
-        public boolean isActive() { return active; }
-        public void setActive(boolean active) { this.active = active; }
-        
-        public Double getBaseSalary() { return baseSalary; }
-        public void setBaseSalary(Double baseSalary) { this.baseSalary = baseSalary; }
+        private String department;
 
-        public String getTeamId() { return teamId; }
-        public void setTeamId(String teamId) { this.teamId = teamId; }
+        public UserDto() {
+        }
 
-        public String getManagerId() { return managerId; }
-        public void setManagerId(String managerId) { this.managerId = managerId; }
+        public String getId() {
+            return id;
+        }
 
-        public String getManagerName() { return managerName; }
-        public void setManagerName(String managerName) { this.managerName = managerName; }
+        public void setId(String id) {
+            this.id = id;
+        }
 
-        public String getCompanyEmail() { return companyEmail; }
-        public void setCompanyEmail(String companyEmail) { this.companyEmail = companyEmail; }
+        public String getEmail() {
+            return email;
+        }
+
+        public void setEmail(String email) {
+            this.email = email;
+        }
+
+        public String getFirstName() {
+            return firstName;
+        }
+
+        public void setFirstName(String firstName) {
+            this.firstName = firstName;
+        }
+
+        public String getLastName() {
+            return lastName;
+        }
+
+        public void setLastName(String lastName) {
+            this.lastName = lastName;
+        }
+
+        public String getRole() {
+            return role;
+        }
+
+        public void setRole(String role) {
+            this.role = role;
+        }
+
+        public String getPhone() {
+            return phone;
+        }
+
+        public void setPhone(String phone) {
+            this.phone = phone;
+        }
+
+        public boolean isActive() {
+            return active;
+        }
+
+        public void setActive(boolean active) {
+            this.active = active;
+        }
+
+        public Double getBaseSalary() {
+            return baseSalary;
+        }
+
+        public void setBaseSalary(Double baseSalary) {
+            this.baseSalary = baseSalary;
+        }
+
+        public String getTeamId() {
+            return teamId;
+        }
+
+        public void setTeamId(String teamId) {
+            this.teamId = teamId;
+        }
+
+        public String getManagerId() {
+            return managerId;
+        }
+
+        public void setManagerId(String managerId) {
+            this.managerId = managerId;
+        }
+
+        public String getManagerName() {
+            return managerName;
+        }
+
+        public void setManagerName(String managerName) {
+            this.managerName = managerName;
+        }
+
+        public String getCompanyEmail() {
+            return companyEmail;
+        }
+
+        public void setCompanyEmail(String companyEmail) {
+            this.companyEmail = companyEmail;
+        }
+
+        public String getDepartment() {
+            return department;
+        }
+
+        public void setDepartment(String department) {
+            this.department = department;
+        }
     }
 }

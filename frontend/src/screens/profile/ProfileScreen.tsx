@@ -10,10 +10,12 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { AuthService } from '../../services/AuthService';
+import { ApiService } from '../../services/ApiService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const ProfileScreen = ({ navigation }: any) => {
   const [user, setUser] = useState<any>(null);
+  const [teamName, setTeamName] = useState<string>('Not Assigned');
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
   const [editedData, setEditedData] = useState({
@@ -21,6 +23,12 @@ const ProfileScreen = ({ navigation }: any) => {
     lastName: '',
     email: '',
     phoneNumber: '',
+    companyEmail: '',
+    department: '',
+  });
+  const [managerStats, setManagerStats] = useState({
+    totalTeams: 0,
+    totalEmployees: 0,
   });
 
   useEffect(() => {
@@ -29,16 +37,55 @@ const ProfileScreen = ({ navigation }: any) => {
 
   const loadUserProfile = async () => {
     try {
-      const userData = await AsyncStorage.getItem('user');
+      setLoading(true);
+      // Fetch fresh user data from API
+      const response = await ApiService.getCurrentUser();
+      const userData = response;
+
       if (userData) {
-        const parsedUser = JSON.parse(userData);
-        setUser(parsedUser);
+        setUser(userData);
         setEditedData({
-          firstName: parsedUser.firstName || '',
-          lastName: parsedUser.lastName || '',
-          email: parsedUser.email || '',
-          phoneNumber: parsedUser.phoneNumber || '',
+          firstName: userData.firstName || '',
+          lastName: userData.lastName || '',
+          email: userData.email || '',
+          phoneNumber: userData.phone || userData.phoneNumber || '',
+          companyEmail: userData.companyEmail || '',
+          department: userData.department || '',
         });
+
+        // Set team name if team information is included in user response
+        if (userData.team && userData.team.name) {
+          setTeamName(userData.team.name);
+        } else if (userData.teamId) {
+          // Fallback to fetch team name separately if not included
+          try {
+            const teamRes = await ApiService.get(`/teams/${userData.teamId}`);
+            if (teamRes.data && teamRes.data.name) {
+              setTeamName(teamRes.data.name);
+            }
+          } catch (e) {
+            console.log('Error fetching team name for profile');
+          }
+        }
+
+        // Update local storage with fresh data
+        await AsyncStorage.setItem('user', JSON.stringify(userData));
+
+        // Fetch manager-specific stats if role is MANAGER
+        if (userData.role === 'MANAGER') {
+          try {
+            const [teamsRes, membersRes] = await Promise.all([
+              ApiService.get('/teams/manager/me'),
+              ApiService.get('/users/team-members')
+            ]);
+            setManagerStats({
+              totalTeams: (teamsRes.data || []).length,
+              totalEmployees: (membersRes.data || []).length
+            });
+          } catch (e) {
+            console.log('Error fetching manager stats for profile');
+          }
+        }
       }
     } catch (error) {
       console.error('Error loading profile:', error);
@@ -66,8 +113,8 @@ const ProfileScreen = ({ navigation }: any) => {
       'Are you sure you want to logout?',
       [
         { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Logout', 
+        {
+          text: 'Logout',
           style: 'destructive',
           onPress: async () => {
             try {
@@ -132,7 +179,7 @@ const ProfileScreen = ({ navigation }: any) => {
                 <TextInput
                   style={styles.input}
                   value={editedData.firstName}
-                  onChangeText={(text) => setEditedData({...editedData, firstName: text})}
+                  onChangeText={(text) => setEditedData({ ...editedData, firstName: text })}
                   placeholder="First Name"
                 />
               </View>
@@ -142,7 +189,7 @@ const ProfileScreen = ({ navigation }: any) => {
                 <TextInput
                   style={styles.input}
                   value={editedData.lastName}
-                  onChangeText={(text) => setEditedData({...editedData, lastName: text})}
+                  onChangeText={(text) => setEditedData({ ...editedData, lastName: text })}
                   placeholder="Last Name"
                 />
               </View>
@@ -152,7 +199,7 @@ const ProfileScreen = ({ navigation }: any) => {
                 <TextInput
                   style={styles.input}
                   value={editedData.email}
-                  onChangeText={(text) => setEditedData({...editedData, email: text})}
+                  onChangeText={(text) => setEditedData({ ...editedData, email: text })}
                   placeholder="Email"
                   keyboardType="email-address"
                   autoCapitalize="none"
@@ -164,9 +211,19 @@ const ProfileScreen = ({ navigation }: any) => {
                 <TextInput
                   style={styles.input}
                   value={editedData.phoneNumber}
-                  onChangeText={(text) => setEditedData({...editedData, phoneNumber: text})}
+                  onChangeText={(text) => setEditedData({ ...editedData, phoneNumber: text })}
                   placeholder="Phone Number"
                   keyboardType="phone-pad"
+                />
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Department</Text>
+                <TextInput
+                  style={styles.input}
+                  value={editedData.department}
+                  onChangeText={(text) => setEditedData({ ...editedData, department: text })}
+                  placeholder="Department"
                 />
               </View>
 
@@ -184,9 +241,23 @@ const ProfileScreen = ({ navigation }: any) => {
               <View style={styles.infoDivider} />
 
               <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Phone</Text>
-                <Text style={styles.infoValue}>{user.phoneNumber || 'Not set'}</Text>
+                <Text style={styles.infoLabel}>Company Email</Text>
+                <Text style={styles.infoValue}>{user.companyEmail || 'Not set'}</Text>
               </View>
+
+              <View style={styles.infoDivider} />
+
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Phone</Text>
+                <Text style={styles.infoValue}>{user.phone || user.phoneNumber || 'Not set'}</Text>
+              </View>
+
+              {/* <View style={styles.infoDivider} />
+
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Department</Text>
+                <Text style={styles.infoValue}>{user.department || 'General'}</Text>
+              </View> */}
 
               <View style={styles.infoDivider} />
 
@@ -206,11 +277,95 @@ const ProfileScreen = ({ navigation }: any) => {
         </View>
       </View>
 
+      {/* Management Overview (For Managers only) */}
+      {user.role === 'MANAGER' && (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Management Overview</Text>
+          <View style={styles.infoCard}>
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Total Teams Managed</Text>
+              <Text style={[styles.infoValue, { color: '#4f46e5', fontWeight: 'bold' }]}>{managerStats.totalTeams}</Text>
+            </View>
+
+            <View style={styles.infoDivider} />
+
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Total Employees</Text>
+              <Text style={[styles.infoValue, { color: '#10b981', fontWeight: 'bold' }]}>{managerStats.totalEmployees}</Text>
+            </View>
+
+            <View style={styles.infoDivider} />
+
+            {/* <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Account Status</Text>
+              <Text style={[styles.infoValue, { color: '#4CAF50' }]}>Active Manager</Text>
+            </View> */}
+          </View>
+        </View>
+      )}
+
+      {/* Employment Details Section (For Employees only) */}
+      {user.role === 'EMPLOYEE' && (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Employment Details</Text>
+          <View style={styles.infoCard}>
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Assigned Team</Text>
+              <Text style={[styles.infoValue, { color: '#4f46e5', fontWeight: 'bold' }]}>{teamName}</Text>
+            </View>
+
+            <View style={styles.infoDivider} />
+
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Role</Text>
+              <Text style={styles.infoValue}>{user.role}</Text>
+            </View>
+
+            <View style={styles.infoDivider} />
+
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Base Salary</Text>
+              <Text style={[styles.infoValue, { color: '#0eb29a', fontWeight: 'bold' }]}>₹{user.baseSalary || 0}</Text>
+            </View>
+          </View>
+        </View>
+      )}
+
+      {/* Reporting Manager Details (Usually for Employees) */}
+      {user.manager && user.role === 'EMPLOYEE' && (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Reporting Manager</Text>
+          <View style={styles.infoCard}>
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Name</Text>
+              <Text style={styles.infoValue}>{user.manager.firstName} {user.manager.lastName}</Text>
+            </View>
+
+            <View style={styles.infoDivider} />
+
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Email</Text>
+              <Text style={styles.infoValue}>{user.manager.email}</Text>
+            </View>
+
+            {user.manager.phone && (
+              <>
+                <View style={styles.infoDivider} />
+                <View style={styles.infoRow}>
+                  <Text style={styles.infoLabel}>Phone</Text>
+                  <Text style={styles.infoValue}>{user.manager.phone}</Text>
+                </View>
+              </>
+            )}
+          </View>
+        </View>
+      )}
+
       {/* Account Settings */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Account Settings</Text>
-        
-        <TouchableOpacity 
+
+        <TouchableOpacity
           style={styles.settingItem}
           onPress={() => navigation.navigate('ChangePassword')}
         >
@@ -218,7 +373,7 @@ const ProfileScreen = ({ navigation }: any) => {
           <Text style={styles.settingArrow}>→</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.settingItem}
           onPress={() => navigation.navigate('NotificationSettings')}
         >
@@ -226,7 +381,7 @@ const ProfileScreen = ({ navigation }: any) => {
           <Text style={styles.settingArrow}>→</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.settingItem}
           onPress={() => navigation.navigate('PrivacySettings')}
         >

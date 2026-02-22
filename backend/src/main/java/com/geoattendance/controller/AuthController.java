@@ -62,9 +62,7 @@ public class AuthController {
             Authentication authentication = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(
                             authRequest.getEmail(),
-                            authRequest.getPassword()
-                    )
-            );
+                            authRequest.getPassword()));
 
             SecurityContextHolder.getContext().setAuthentication(authentication);
             String jwt = jwtTokenProvider.generateToken(authentication);
@@ -78,7 +76,8 @@ public class AuthController {
 
             // Log success (mask token for safety)
             logger.info("User '{}' authenticated successfully", authRequest.getEmail());
-            logger.debug("Generated JWT (masked) for {}: {}", authRequest.getEmail(), jwt != null && jwt.length() > 20 ? jwt.substring(0,20) + "..." : jwt);
+            logger.debug("Generated JWT (masked) for {}: {}", authRequest.getEmail(),
+                    jwt != null && jwt.length() > 20 ? jwt.substring(0, 20) + "..." : jwt);
 
             return ResponseEntity.ok(response);
         } catch (Exception e) {
@@ -115,11 +114,11 @@ public class AuthController {
         // Send welcome email
         try {
             notificationService.sendEmailNotification(
-                user.getEmail(),
-                "Welcome to GeoAttendance Pro",
-                String.format("Hello %s,\n\nWelcome to GeoAttendance Pro! Your account has been created successfully with the role of %s.\n\nYou can now log in using your email and password.", 
-                    user.getFirstName(), user.getRole())
-            );
+                    user.getEmail(),
+                    "Welcome to GeoAttendance Pro",
+                    String.format(
+                            "Hello %s,\n\nWelcome to GeoAttendance Pro! Your account has been created successfully with the role of %s.\n\nYou can now log in using your email and password.",
+                            user.getFirstName(), user.getRole()));
         } catch (Exception e) {
             logger.error("Failed to send welcome email to {}: {}", user.getEmail(), e.getMessage());
         }
@@ -154,10 +153,9 @@ public class AuthController {
 
             // Send confirmation email
             notificationService.sendEmailNotification(
-                currentUser.getEmail(),
-                "Password Changed Successfully",
-                "Your account password has been changed. If you did not perform this action, please contact support immediately."
-            );
+                    currentUser.getEmail(),
+                    "Password Changed Successfully",
+                    "Your account password has been changed. If you did not perform this action, please contact support immediately.");
 
             return ResponseEntity.ok(Map.of("message", "Password changed successfully"));
         } catch (Exception e) {
@@ -172,11 +170,11 @@ public class AuthController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(Map.of("error", "Not authenticated"));
         }
-        
+
         String email = authentication.getName();
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
-        
+
         return ResponseEntity.ok(getUserDto(user));
     }
 
@@ -192,7 +190,7 @@ public class AuthController {
         userDto.put("department", user.getDepartment());
         userDto.put("baseSalary", user.getBaseSalary());
         userDto.put("companyEmail", user.getCompanyEmail());
-        
+
         // Include manager information if available
         if (user.getManager() != null) {
             Map<String, Object> managerDto = new HashMap<>();
@@ -201,9 +199,11 @@ public class AuthController {
             managerDto.put("lastName", user.getManager().getLastName());
             managerDto.put("email", user.getManager().getEmail());
             managerDto.put("phone", user.getManager().getPhone());
+            managerDto.put("role", user.getManager().getRole());
+            managerDto.put("department", user.getManager().getDepartment());
             userDto.put("manager", managerDto);
         }
-        
+
         // Include team information if user is an employee
         if ("EMPLOYEE".equalsIgnoreCase(user.getRole())) {
             Optional<Team> teamOpt = teamService.getTeamByEmployeeId(user.getId());
@@ -214,7 +214,7 @@ public class AuthController {
                 teamDto.put("name", team.getName());
                 teamDto.put("managerId", team.getManagerId());
                 userDto.put("team", teamDto);
-                
+
                 // If manager info is missing, fetch from team's manager
                 if (!userDto.containsKey("manager") && team.getManagerId() != null) {
                     userRepository.findById(team.getManagerId()).ifPresent(manager -> {
@@ -229,7 +229,7 @@ public class AuthController {
                 }
             }
         }
-        
+
         return userDto;
     }
 }

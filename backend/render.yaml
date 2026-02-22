@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: geo-attendance-backend
+    env: docker
+    region: oregon 
+    plan: free
+    dockerContext: .
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+      - key: MONGO_URI
+        sync: false
+      - key: JWT_SECRET
+        sync: false
